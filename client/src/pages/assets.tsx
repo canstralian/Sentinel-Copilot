@@ -67,8 +67,16 @@ export default function Assets() {
   const pageSize = 20;
   const { toast } = useToast();
 
+  const queryParams = new URLSearchParams({
+    page: String(page),
+    pageSize: String(pageSize),
+    ...(searchQuery && { search: searchQuery }),
+    ...(typeFilter !== "all" && { type: typeFilter }),
+    ...(scopeFilter !== "all" && { scope: scopeFilter }),
+  });
+
   const { data, isLoading } = useQuery<{ assets: Asset[]; total: number }>({
-    queryKey: ["/api/assets", { page, pageSize, search: searchQuery, type: typeFilter, scope: scopeFilter }],
+    queryKey: [`/api/assets?${queryParams.toString()}`],
   });
 
   const createMutation = useMutation({

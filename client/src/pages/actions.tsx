@@ -59,8 +59,13 @@ export default function Actions() {
   const [actionToApprove, setActionToApprove] = useState<ActionLog | null>(null);
   const { toast } = useToast();
 
+  const queryParams = new URLSearchParams({
+    ...(riskFilter !== "all" && { risk: riskFilter }),
+    ...(approvalFilter !== "all" && { approval: approvalFilter }),
+  }).toString();
+  
   const { data: actions, isLoading } = useQuery<ActionLog[]>({
-    queryKey: ["/api/actions", { risk: riskFilter, approval: approvalFilter }],
+    queryKey: [`/api/actions${queryParams ? `?${queryParams}` : ""}`],
   });
 
   const approveMutation = useMutation({

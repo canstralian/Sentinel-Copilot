@@ -1,0 +1,7 @@
+control_id,framework,name,family,objective,mapped_iso,mapped_cis
+CTRL-AC-1,NIST 800-53,Access Control Policy and Procedures,AC,"Define, approve, and review access control policy.",A.5.15;A.8.2,CIS v8 5.1
+CTRL-CM-2,NIST 800-53,Baseline Configuration,CM,Establish and maintain secure baselines.,A.8.9,CIS v8 4.1
+CTRL-SI-2,NIST 800-53,Flaw Remediation,SI,"Identify, report, and correct flaws promptly.",A.8.8,CIS v8 7.4
+CTRL-AU-6,NIST 800-53,"Audit Review, Analysis, and Reporting",AU,Review and analyze audit logs and report findings.,A.8.15,CIS v8 8.2
+CTRL-IR-4,NIST 800-53,Incident Handling,IR,Handle incidents with defined steps and roles.,A.5.24,CIS v8 17.4
+CTRL-SC-8,NIST 800-53,Transmission Confidentiality and Integrity,SC,Protect data in transit (TLS).,A.8.24,CIS v8 3.10

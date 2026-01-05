@@ -1,0 +1,142 @@
+asset_id,org_id,hostname,fqdn,asset_type,env,owner_team,business_service,criticality,os,tags,ip
+AST-CTNCSBP,ORG-ACME,db-staging-667,db-staging-667.org-acme.example.com,db,staging,Platform,Payments API,Low,Amazon Linux 2,pii,192.0.2.13
+AST-8UO9B4K,ORG-ACME,vm-dev-643,vm-dev-643.org-acme.example.com,vm,dev,Payments,Identity,Low,RHEL 9,pci;internet_exposed;internal_only,192.0.2.150
+AST-ZUWRT1Q,ORG-ACME,vm-staging-100,vm-staging-100.org-acme.example.com,vm,staging,IT Ops,Analytics,High,Windows Server 2019,hipaa_like,192.0.2.141
+AST-RMQVCSF,ORG-ACME,api-dev-308,api-dev-308.org-acme.example.com,api,dev,Data,Payments API,Critical,Amazon Linux 2,pii,192.0.2.135
+AST-3MMR2CD,ORG-ACME,net-dev-809,net-dev-809.org-acme.example.com,network_device,dev,Data,Order Processing,Low,Ubuntu 22.04,internal_only;legacy;third_party,192.0.2.225
+AST-5M7MVRH,ORG-ACME,end-staging-734,end-staging-734.org-acme.example.com,endpoint,staging,Data,Payments API,Medium,Amazon Linux 2,third_party;internet_exposed,192.0.2.99
+AST-KEPTZ9Y,ORG-ACME,db-staging-412,db-staging-412.org-acme.example.com,db,staging,IT Ops,Payments API,Medium,Ubuntu 20.04,pci,192.0.2.141
+AST-RVJAPNU,ORG-ACME,vm-dev-239,vm-dev-239.org-acme.example.com,vm,dev,Payments,EMR,Low,N/A (SaaS),high_change_rate;hipaa_like;third_party,192.0.2.4
+AST-WCCHFMB,ORG-ACME,saa-prod-494,saa-prod-494.org-acme.example.com,saas,prod,Platform,Identity,Medium,N/A (SaaS),pii;pci;internal_only,
+AST-WFJMNE4,ORG-ACME,web-prod-896,web-prod-896.org-acme.example.com,web_app,prod,IT Ops,Order Processing,Critical,RHEL 9,pci,192.0.2.54
+AST-J3FA8TF,ORG-ACME,api-dev-351,api-dev-351.org-acme.example.com,api,dev,Security,Customer Portal,High,Ubuntu 20.04,internal_only;third_party;pci,192.0.2.190
+AST-T2LI394,ORG-ACME,db-staging-791,db-staging-791.org-acme.example.com,db,staging,Infra,Payments API,Critical,Windows Server 2019,third_party,192.0.2.58
+AST-BKJY8Q7,ORG-ACME,k8s-dev-030,k8s-dev-030.org-acme.example.com,k8s_node,dev,Data,Analytics,Low,Windows Server 2019,hipaa_like,192.0.2.254
+AST-R9VA6MX,ORG-ACME,end-prod-346,end-prod-346.org-acme.example.com,endpoint,prod,Infra,EMR,Low,Amazon Linux 2,hipaa_like;third_party;pii,192.0.2.53
+AST-D8ZQ0DF,ORG-ACME,saa-dev-341,saa-dev-341.org-acme.example.com,saas,dev,Payments,Customer Portal,Medium,N/A (SaaS),third_party;high_change_rate;legacy,
+AST-9XMTEA8,ORG-ACME,db-dev-847,db-dev-847.org-acme.example.com,db,dev,Customer Apps,Customer Portal,Medium,Amazon Linux 2,hipaa_like,192.0.2.153
+AST-S1LT4C0,ORG-ACME,web-staging-218,web-staging-218.org-acme.example.com,web_app,staging,IT Ops,EMR,Critical,Windows Server 2022,pci;internal_only;high_change_rate,192.0.2.75
+AST-V1FFWEC,ORG-ACME,web-staging-796,web-staging-796.org-acme.example.com,web_app,staging,Customer Apps,Identity,Critical,Ubuntu 20.04,internet_exposed;pii;high_change_rate,192.0.2.47
+AST-SU16PWS,ORG-ACME,con-prod-791,con-prod-791.org-acme.example.com,container,prod,Security,Payments API,High,N/A (SaaS),third_party;internal_only;pii,192.0.2.26
+AST-6HQOOLY,ORG-ACME,net-staging-945,net-staging-945.org-acme.example.com,network_device,staging,IT Ops,Customer Portal,Medium,RHEL 9,pci,192.0.2.144
+AST-EQ0D5FY,ORG-ACME,k8s-prod-260,k8s-prod-260.org-acme.example.com,k8s_node,prod,Payments,Payments API,Critical,Amazon Linux 2,high_change_rate;pii,192.0.2.227
+AST-NMQZNSK,ORG-ACME,k8s-staging-095,k8s-staging-095.org-acme.example.com,k8s_node,staging,Platform,Customer Portal,Medium,Ubuntu 20.04,internal_only,192.0.2.185
+AST-G134Y8O,ORG-ACME,con-prod-928,con-prod-928.org-acme.example.com,container,prod,Security,Identity,Critical,RHEL 8,internal_only,192.0.2.200
+AST-6JADJVI,ORG-ACME,web-dev-188,web-dev-188.org-acme.example.com,web_app,dev,Data,POS,Low,N/A (SaaS),legacy,192.0.2.109
+AST-JESIDFB,ORG-ACME,net-staging-949,net-staging-949.org-acme.example.com,network_device,staging,Payments,Analytics,High,Windows Server 2019,third_party;internal_only,192.0.2.235
+AST-AJA0TGR,ORG-ACME,db-staging-356,db-staging-356.org-acme.example.com,db,staging,IT Ops,Customer Portal,Critical,N/A (SaaS),high_change_rate;internal_only;pci,192.0.2.206
+AST-3ZWOMBE,ORG-ACME,vm-prod-351,vm-prod-351.org-acme.example.com,vm,prod,Platform,EMR,High,Amazon Linux 2,internet_exposed,192.0.2.51
+AST-5YKIKQF,ORG-ACME,api-dev-862,api-dev-862.org-acme.example.com,api,dev,IT Ops,Customer Portal,High,RHEL 8,legacy;pii,192.0.2.98
+AST-GMDKXI1,ORG-ACME,web-staging-224,web-staging-224.org-acme.example.com,web_app,staging,Platform,Analytics,Low,Windows Server 2022,internet_exposed;hipaa_like,192.0.2.92
+AST-IVT1XZ5,ORG-ACME,web-staging-312,web-staging-312.org-acme.example.com,web_app,staging,IT Ops,POS,High,N/A (SaaS),internal_only,192.0.2.162
+AST-ZSPZS61,ORG-ACME,db-prod-845,db-prod-845.org-acme.example.com,db,prod,Security,POS,Low,Windows Server 2019,internet_exposed,192.0.2.214
+AST-8NQBATI,ORG-ACME,web-prod-653,web-prod-653.org-acme.example.com,web_app,prod,Data,Customer Portal,Critical,Ubuntu 20.04,pii;legacy;internal_only,192.0.2.93
+AST-JCJ0H09,ORG-ACME,api-dev-755,api-dev-755.org-acme.example.com,api,dev,IT Ops,POS,Critical,Ubuntu 20.04,internal_only;high_change_rate,192.0.2.122
+AST-HVLXYWE,ORG-ACME,web-dev-648,web-dev-648.org-acme.example.com,web_app,dev,IT Ops,Customer Portal,Critical,RHEL 9,pii;legacy;third_party,192.0.2.165
+AST-KQ19TLD,ORG-ACME,end-staging-726,end-staging-726.org-acme.example.com,endpoint,staging,IT Ops,Customer Portal,High,N/A (SaaS),third_party,192.0.2.133
+AST-8HUFS8E,ORG-ACME,con-staging-215,con-staging-215.org-acme.example.com,container,staging,Infra,EMR,High,Ubuntu 20.04,legacy;pii;hipaa_like,192.0.2.235
+AST-ARQKFML,ORG-ACME,end-staging-026,end-staging-026.org-acme.example.com,endpoint,staging,Infra,Analytics,Low,RHEL 8,high_change_rate;internet_exposed,192.0.2.41
+AST-0JCO5C7,ORG-ACME,vm-dev-013,vm-dev-013.org-acme.example.com,vm,dev,Infra,Analytics,Low,RHEL 9,internet_exposed,192.0.2.231
+AST-IJSGN85,ORG-ACME,con-dev-959,con-dev-959.org-acme.example.com,container,dev,Infra,POS,Critical,Windows Server 2019,pii;internet_exposed;legacy,192.0.2.39
+AST-1XKB7EQ,ORG-ACME,saa-staging-630,saa-staging-630.org-acme.example.com,saas,staging,Data,Analytics,High,N/A (SaaS),internal_only;hipaa_like,
+AST-YEXCS3T,ORG-ACME,vm-staging-495,vm-staging-495.org-acme.example.com,vm,staging,IT Ops,Analytics,Critical,Amazon Linux 2,hipaa_like,192.0.2.143
+AST-ULN3HA5,ORG-ACME,vm-prod-179,vm-prod-179.org-acme.example.com,vm,prod,IT Ops,Order Processing,Medium,Amazon Linux 2,legacy;high_change_rate,192.0.2.88
+AST-8ESW5HJ,ORG-ACME,web-staging-285,web-staging-285.org-acme.example.com,web_app,staging,Payments,Order Processing,Critical,N/A (SaaS),internal_only;high_change_rate,192.0.2.148
+AST-Z6RVAO7,ORG-ACME,web-prod-034,web-prod-034.org-acme.example.com,web_app,prod,Infra,Identity,Critical,N/A (SaaS),pii,192.0.2.109
+AST-8D3Z46D,ORG-ACME,vm-prod-156,vm-prod-156.org-acme.example.com,vm,prod,Infra,Customer Portal,Low,Windows Server 2022,internet_exposed,192.0.2.134
+AST-TP1DK7G,ORG-ACME,con-prod-642,con-prod-642.org-acme.example.com,container,prod,Data,Payments API,Low,Ubuntu 22.04,internal_only;hipaa_like;pci,192.0.2.65
+AST-ISTBOXB,ORG-ACME,k8s-dev-860,k8s-dev-860.org-acme.example.com,k8s_node,dev,Payments,Order Processing,Critical,Ubuntu 20.04,hipaa_like;legacy,192.0.2.227
+AST-RZZNOAK,ORG-ACME,saa-staging-233,saa-staging-233.org-acme.example.com,saas,staging,Infra,Identity,Low,N/A (SaaS),third_party,
+AST-GQJ6DWV,ORG-ACME,vm-staging-785,vm-staging-785.org-acme.example.com,vm,staging,Payments,Order Processing,Critical,Ubuntu 22.04,pci;hipaa_like;internet_exposed,192.0.2.210
+AST-FBCO650,ORG-ACME,vm-prod-998,vm-prod-998.org-acme.example.com,vm,prod,Platform,Payments API,High,Windows Server 2019,third_party,192.0.2.153
+AST-49PDCCP,ORG-ORION,con-dev-743,con-dev-743.org-orion.example.com,container,dev,Platform,Identity,Medium,Amazon Linux 2,internal_only;high_change_rate,192.0.2.97
+AST-ZHTQL0R,ORG-ORION,saa-prod-051,saa-prod-051.org-orion.example.com,saas,prod,Customer Apps,Order Processing,Medium,N/A (SaaS),high_change_rate;internet_exposed;hipaa_like,
+AST-7J06MJ8,ORG-ORION,web-staging-065,web-staging-065.org-orion.example.com,web_app,staging,Security,Customer Portal,High,RHEL 8,internal_only;internet_exposed,192.0.2.206
+AST-DZQ1263,ORG-ORION,api-prod-846,api-prod-846.org-orion.example.com,api,prod,Payments,Order Processing,Medium,Ubuntu 22.04,internal_only;high_change_rate;legacy,192.0.2.60
+AST-5Q2VSOF,ORG-ORION,db-dev-242,db-dev-242.org-orion.example.com,db,dev,IT Ops,Customer Portal,Low,N/A (SaaS),legacy;pii;hipaa_like,192.0.2.84
+AST-DDRZQIP,ORG-ORION,api-prod-272,api-prod-272.org-orion.example.com,api,prod,Security,EMR,Medium,Ubuntu 20.04,internal_only;pci,192.0.2.160
+AST-JPGIK6G,ORG-ORION,con-staging-261,con-staging-261.org-orion.example.com,container,staging,Platform,Order Processing,High,Windows Server 2019,hipaa_like;legacy;internet_exposed,192.0.2.189
+AST-R346BKE,ORG-ORION,end-prod-105,end-prod-105.org-orion.example.com,endpoint,prod,Payments,Identity,Medium,Ubuntu 20.04,pci;hipaa_like,192.0.2.2
+AST-DVWHNFH,ORG-ORION,con-dev-969,con-dev-969.org-orion.example.com,container,dev,Data,Customer Portal,Medium,Ubuntu 22.04,high_change_rate;legacy,192.0.2.2
+AST-CBRRO2X,ORG-ORION,k8s-prod-636,k8s-prod-636.org-orion.example.com,k8s_node,prod,Payments,EMR,Low,Windows Server 2022,internal_only;hipaa_like,192.0.2.80
+AST-8LUMO59,ORG-ORION,con-dev-315,con-dev-315.org-orion.example.com,container,dev,Data,EMR,Medium,Amazon Linux 2,high_change_rate;pii;internet_exposed,192.0.2.107
+AST-EDUN1EB,ORG-ORION,saa-prod-434,saa-prod-434.org-orion.example.com,saas,prod,Payments,EMR,Critical,N/A (SaaS),legacy,
+AST-KS7DR28,ORG-ORION,net-prod-150,net-prod-150.org-orion.example.com,network_device,prod,Payments,Analytics,Medium,Ubuntu 22.04,legacy;internet_exposed,192.0.2.90
+AST-ZY6X4WW,ORG-ORION,saa-prod-926,saa-prod-926.org-orion.example.com,saas,prod,Payments,POS,Critical,N/A (SaaS),hipaa_like,
+AST-FMF83G5,ORG-ORION,web-staging-962,web-staging-962.org-orion.example.com,web_app,staging,Infra,POS,Low,RHEL 8,high_change_rate,192.0.2.133
+AST-2XLIONS,ORG-ORION,end-dev-870,end-dev-870.org-orion.example.com,endpoint,dev,Payments,Customer Portal,Low,N/A (SaaS),hipaa_like;third_party,192.0.2.161
+AST-OCMN2SX,ORG-ORION,end-prod-830,end-prod-830.org-orion.example.com,endpoint,prod,Platform,EMR,Medium,Ubuntu 20.04,legacy;high_change_rate;third_party,192.0.2.122
+AST-SN8E490,ORG-ORION,net-prod-056,net-prod-056.org-orion.example.com,network_device,prod,Infra,Customer Portal,Medium,Windows Server 2022,internal_only;high_change_rate,192.0.2.193
+AST-7CM1F6J,ORG-ORION,db-dev-808,db-dev-808.org-orion.example.com,db,dev,Infra,Order Processing,Medium,RHEL 9,third_party;pii;internal_only,192.0.2.185
+AST-LBGF7Y6,ORG-ORION,con-dev-519,con-dev-519.org-orion.example.com,container,dev,Payments,POS,High,Ubuntu 20.04,internet_exposed;legacy;pci,192.0.2.61
+AST-Y6JT40N,ORG-ORION,end-dev-534,end-dev-534.org-orion.example.com,endpoint,dev,IT Ops,Analytics,Medium,RHEL 8,pii;hipaa_like,192.0.2.149
+AST-8KSL857,ORG-ORION,vm-prod-631,vm-prod-631.org-orion.example.com,vm,prod,Data,EMR,Low,Ubuntu 22.04,pci,192.0.2.191
+AST-PNBRWBB,ORG-ORION,con-dev-641,con-dev-641.org-orion.example.com,container,dev,Security,Analytics,High,Ubuntu 20.04,legacy;internal_only;pii,192.0.2.111
+AST-VHWRE7I,ORG-ORION,saa-dev-309,saa-dev-309.org-orion.example.com,saas,dev,Payments,Order Processing,Low,N/A (SaaS),pci,
+AST-8C36VUV,ORG-ORION,con-staging-832,con-staging-832.org-orion.example.com,container,staging,Security,EMR,Critical,Windows Server 2019,internet_exposed,192.0.2.68
+AST-OIC2AT7,ORG-ORION,web-prod-545,web-prod-545.org-orion.example.com,web_app,prod,Payments,Order Processing,Medium,Amazon Linux 2,pci;internal_only;third_party,192.0.2.7
+AST-90RTNP6,ORG-ORION,api-staging-641,api-staging-641.org-orion.example.com,api,staging,Platform,EMR,Critical,Windows Server 2022,pii,192.0.2.13
+AST-E677JBW,ORG-ORION,con-prod-660,con-prod-660.org-orion.example.com,container,prod,Customer Apps,Order Processing,High,RHEL 9,hipaa_like;internet_exposed;internal_only,192.0.2.10
+AST-I080L5L,ORG-ORION,web-prod-267,web-prod-267.org-orion.example.com,web_app,prod,Payments,Order Processing,Critical,N/A (SaaS),internet_exposed;high_change_rate;third_party,192.0.2.232
+AST-ULHWC6F,ORG-ORION,saa-dev-240,saa-dev-240.org-orion.example.com,saas,dev,Platform,Customer Portal,Low,N/A (SaaS),pci;third_party;pii,
+AST-YWZ0CVN,ORG-ORION,web-prod-043,web-prod-043.org-orion.example.com,web_app,prod,Infra,POS,Low,Amazon Linux 2,hipaa_like,192.0.2.36
+AST-B43W3WK,ORG-ORION,vm-prod-115,vm-prod-115.org-orion.example.com,vm,prod,Platform,Payments API,Low,Windows Server 2019,legacy;pci,192.0.2.9
+AST-M7B161V,ORG-ORION,saa-staging-022,saa-staging-022.org-orion.example.com,saas,staging,IT Ops,POS,High,N/A (SaaS),internet_exposed;high_change_rate;hipaa_like,
+AST-DQBUZ3U,ORG-ORION,web-staging-532,web-staging-532.org-orion.example.com,web_app,staging,Data,Payments API,Critical,Ubuntu 22.04,hipaa_like;pci;internet_exposed,192.0.2.198
+AST-R2GRM3J,ORG-ORION,web-staging-503,web-staging-503.org-orion.example.com,web_app,staging,Payments,Analytics,Medium,Windows Server 2019,pci;internet_exposed,192.0.2.25
+AST-Z2WMOO6,ORG-ORION,api-staging-807,api-staging-807.org-orion.example.com,api,staging,Platform,Order Processing,Low,RHEL 8,internal_only,192.0.2.254
+AST-SN5IQT1,ORG-ORION,con-staging-923,con-staging-923.org-orion.example.com,container,staging,Infra,Identity,Low,RHEL 8,legacy;internal_only;pii,192.0.2.140
+AST-LQYJIMX,ORG-ORION,end-dev-568,end-dev-568.org-orion.example.com,endpoint,dev,Customer Apps,Payments API,Medium,RHEL 9,pci;legacy,192.0.2.190
+AST-VMI8J89,ORG-ORION,db-prod-741,db-prod-741.org-orion.example.com,db,prod,Payments,EMR,Low,Windows Server 2019,pci;pii,192.0.2.84
+AST-JD6K5QA,ORG-ORION,con-dev-305,con-dev-305.org-orion.example.com,container,dev,Infra,POS,Critical,Windows Server 2019,internal_only;hipaa_like;internet_exposed,192.0.2.112
+AST-O06PU0P,ORG-ORION,db-staging-619,db-staging-619.org-orion.example.com,db,staging,Payments,EMR,Medium,Windows Server 2022,pii;hipaa_like;high_change_rate,192.0.2.189
+AST-6IOZF4R,ORG-EMBER,con-dev-718,con-dev-718.org-ember.example.com,container,dev,Platform,Identity,Critical,Windows Server 2022,legacy;high_change_rate;internet_exposed,192.0.2.26
+AST-9BTF27S,ORG-EMBER,saa-staging-930,saa-staging-930.org-ember.example.com,saas,staging,Platform,POS,Critical,N/A (SaaS),hipaa_like;legacy;third_party,
+AST-3SO8HYO,ORG-EMBER,net-prod-655,net-prod-655.org-ember.example.com,network_device,prod,Infra,Customer Portal,High,Ubuntu 22.04,internal_only;hipaa_like,192.0.2.203
+AST-C6WYUDK,ORG-EMBER,saa-prod-014,saa-prod-014.org-ember.example.com,saas,prod,IT Ops,Identity,Medium,N/A (SaaS),third_party;pii,
+AST-C2GXZ3F,ORG-EMBER,db-prod-952,db-prod-952.org-ember.example.com,db,prod,Customer Apps,EMR,Critical,N/A (SaaS),pci;high_change_rate,192.0.2.199
+AST-IZY9YR2,ORG-EMBER,end-staging-803,end-staging-803.org-ember.example.com,endpoint,staging,Infra,Analytics,High,Windows Server 2019,internal_only;pci;hipaa_like,192.0.2.218
+AST-D6FKNDU,ORG-EMBER,end-staging-639,end-staging-639.org-ember.example.com,endpoint,staging,Data,POS,Medium,RHEL 8,internet_exposed;legacy;third_party,192.0.2.164
+AST-JDFI1MF,ORG-EMBER,vm-prod-672,vm-prod-672.org-ember.example.com,vm,prod,IT Ops,POS,Medium,Ubuntu 20.04,internal_only;pii;hipaa_like,192.0.2.76
+AST-4YEEP3R,ORG-EMBER,vm-dev-081,vm-dev-081.org-ember.example.com,vm,dev,Security,Customer Portal,Critical,N/A (SaaS),third_party,192.0.2.190
+AST-V0FLZRK,ORG-EMBER,vm-staging-169,vm-staging-169.org-ember.example.com,vm,staging,IT Ops,Analytics,Critical,Amazon Linux 2,pii;third_party;legacy,192.0.2.139
+AST-AB093DR,ORG-EMBER,k8s-dev-663,k8s-dev-663.org-ember.example.com,k8s_node,dev,Infra,Payments API,Low,Windows Server 2019,high_change_rate;legacy;pii,192.0.2.8
+AST-NRS1HPP,ORG-EMBER,k8s-prod-883,k8s-prod-883.org-ember.example.com,k8s_node,prod,Security,Customer Portal,High,RHEL 9,third_party;hipaa_like,192.0.2.169
+AST-S9X2LLK,ORG-EMBER,k8s-dev-279,k8s-dev-279.org-ember.example.com,k8s_node,dev,Security,EMR,Low,Ubuntu 22.04,high_change_rate;internal_only,192.0.2.224
+AST-AG7VX26,ORG-EMBER,web-staging-308,web-staging-308.org-ember.example.com,web_app,staging,Security,Order Processing,Medium,Ubuntu 20.04,internet_exposed,192.0.2.28
+AST-DGB16XN,ORG-EMBER,end-dev-781,end-dev-781.org-ember.example.com,endpoint,dev,Infra,Payments API,High,RHEL 9,pci;hipaa_like,192.0.2.45
+AST-UU6RS31,ORG-EMBER,web-staging-021,web-staging-021.org-ember.example.com,web_app,staging,IT Ops,Identity,Critical,N/A (SaaS),internet_exposed,192.0.2.111
+AST-9XF1TCQ,ORG-EMBER,saa-dev-607,saa-dev-607.org-ember.example.com,saas,dev,Payments,EMR,Low,N/A (SaaS),internet_exposed;third_party,
+AST-ERJUQ07,ORG-EMBER,api-prod-224,api-prod-224.org-ember.example.com,api,prod,Data,POS,Medium,Ubuntu 20.04,third_party;hipaa_like,192.0.2.223
+AST-AAX3CL0,ORG-EMBER,con-prod-735,con-prod-735.org-ember.example.com,container,prod,Payments,POS,Critical,Ubuntu 22.04,legacy;internal_only,192.0.2.9
+AST-F2NXWPN,ORG-EMBER,end-staging-694,end-staging-694.org-ember.example.com,endpoint,staging,Infra,Order Processing,High,RHEL 8,internal_only;internet_exposed,192.0.2.43
+AST-AF3V9IN,ORG-EMBER,k8s-dev-744,k8s-dev-744.org-ember.example.com,k8s_node,dev,IT Ops,Identity,Medium,N/A (SaaS),internet_exposed;pci,192.0.2.251
+AST-V35B335,ORG-EMBER,con-staging-433,con-staging-433.org-ember.example.com,container,staging,Security,Payments API,High,N/A (SaaS),pii;internal_only,192.0.2.41
+AST-H17IVYQ,ORG-EMBER,net-staging-817,net-staging-817.org-ember.example.com,network_device,staging,Payments,Analytics,Low,Amazon Linux 2,pii;internal_only,192.0.2.98
+AST-U65SRVG,ORG-EMBER,k8s-prod-239,k8s-prod-239.org-ember.example.com,k8s_node,prod,Payments,Customer Portal,Medium,RHEL 9,legacy;hipaa_like,192.0.2.102
+AST-7R5NQCL,ORG-EMBER,net-prod-253,net-prod-253.org-ember.example.com,network_device,prod,Platform,Analytics,High,Ubuntu 22.04,internet_exposed,192.0.2.12
+AST-UJ2P813,ORG-EMBER,vm-dev-498,vm-dev-498.org-ember.example.com,vm,dev,Payments,Analytics,Low,RHEL 8,pci,192.0.2.151
+AST-BU5Q86C,ORG-EMBER,saa-prod-029,saa-prod-029.org-ember.example.com,saas,prod,Security,EMR,Critical,N/A (SaaS),pii,
+AST-X8YOQF8,ORG-EMBER,con-staging-579,con-staging-579.org-ember.example.com,container,staging,Customer Apps,Payments API,Medium,Ubuntu 22.04,legacy;internet_exposed,192.0.2.60
+AST-B2ZX9CF,ORG-EMBER,net-prod-858,net-prod-858.org-ember.example.com,network_device,prod,Infra,Customer Portal,Medium,RHEL 9,third_party;high_change_rate;legacy,192.0.2.236
+AST-JERGIFY,ORG-EMBER,api-staging-332,api-staging-332.org-ember.example.com,api,staging,Platform,Order Processing,Medium,Ubuntu 22.04,hipaa_like,192.0.2.96
+AST-5FQD74W,ORG-EMBER,api-dev-888,api-dev-888.org-ember.example.com,api,dev,IT Ops,Analytics,High,Windows Server 2019,pii;legacy,192.0.2.96
+AST-0GQ6PFP,ORG-EMBER,k8s-prod-340,k8s-prod-340.org-ember.example.com,k8s_node,prod,Payments,Payments API,Low,RHEL 9,internal_only;pci;pii,192.0.2.57
+AST-QRFSW27,ORG-EMBER,con-staging-112,con-staging-112.org-ember.example.com,container,staging,Security,Order Processing,High,Ubuntu 20.04,hipaa_like;pci,192.0.2.82
+AST-7DK6C0K,ORG-EMBER,saa-staging-245,saa-staging-245.org-ember.example.com,saas,staging,Customer Apps,Customer Portal,Critical,N/A (SaaS),legacy;internal_only;pii,
+AST-7KMBOJG,ORG-EMBER,end-prod-809,end-prod-809.org-ember.example.com,endpoint,prod,Infra,Payments API,Medium,Windows Server 2022,pii,192.0.2.214
+AST-1GEYWGL,ORG-EMBER,api-dev-749,api-dev-749.org-ember.example.com,api,dev,Platform,Customer Portal,Critical,Ubuntu 22.04,legacy;pci;high_change_rate,192.0.2.127
+AST-6R5JG3N,ORG-EMBER,end-prod-016,end-prod-016.org-ember.example.com,endpoint,prod,Payments,EMR,High,Ubuntu 22.04,third_party;internal_only,192.0.2.105
+AST-I3625U6,ORG-EMBER,api-prod-366,api-prod-366.org-ember.example.com,api,prod,Data,POS,Low,N/A (SaaS),internet_exposed;internal_only,192.0.2.183
+AST-8IGDJ3B,ORG-EMBER,net-prod-022,net-prod-022.org-ember.example.com,network_device,prod,Platform,EMR,Medium,RHEL 9,third_party,192.0.2.63
+AST-D5ZBERS,ORG-EMBER,net-prod-720,net-prod-720.org-ember.example.com,network_device,prod,Data,Customer Portal,Low,Ubuntu 20.04,pci;internal_only,192.0.2.114
+AST-U0F37NP,ORG-EMBER,vm-prod-151,vm-prod-151.org-ember.example.com,vm,prod,Infra,Identity,Low,Amazon Linux 2,legacy,192.0.2.172
+AST-MP92634,ORG-EMBER,k8s-staging-247,k8s-staging-247.org-ember.example.com,k8s_node,staging,Platform,Analytics,Medium,RHEL 8,high_change_rate,192.0.2.215
+AST-GLHYIPO,ORG-EMBER,web-staging-112,web-staging-112.org-ember.example.com,web_app,staging,IT Ops,EMR,Low,Ubuntu 22.04,internal_only,192.0.2.136
+AST-7WJSP8K,ORG-EMBER,con-dev-556,con-dev-556.org-ember.example.com,container,dev,Data,Analytics,Medium,Ubuntu 20.04,internal_only,192.0.2.207
+AST-7PS56UJ,ORG-EMBER,api-staging-605,api-staging-605.org-ember.example.com,api,staging,Customer Apps,Customer Portal,High,N/A (SaaS),hipaa_like;legacy;third_party,192.0.2.137
+AST-QTWQLIH,ORG-EMBER,vm-dev-728,vm-dev-728.org-ember.example.com,vm,dev,Security,Identity,Critical,Amazon Linux 2,legacy,192.0.2.94
+AST-LJ5HCAT,ORG-EMBER,db-prod-332,db-prod-332.org-ember.example.com,db,prod,Security,POS,High,N/A (SaaS),internet_exposed;internal_only;hipaa_like,192.0.2.143
+AST-DI80FMM,ORG-EMBER,end-staging-754,end-staging-754.org-ember.example.com,endpoint,staging,Customer Apps,Payments API,High,Ubuntu 20.04,third_party;pci;legacy,192.0.2.196
+AST-A1VR8UP,ORG-EMBER,db-staging-892,db-staging-892.org-ember.example.com,db,staging,Infra,Analytics,Low,Amazon Linux 2,third_party;pci,192.0.2.27
+AST-SVXA09N,ORG-EMBER,k8s-staging-362,k8s-staging-362.org-ember.example.com,k8s_node,staging,Data,Payments API,High,Windows Server 2022,high_change_rate;internal_only,192.0.2.101

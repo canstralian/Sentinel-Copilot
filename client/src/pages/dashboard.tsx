@@ -29,12 +29,13 @@ export default function Dashboard() {
     queryKey: ["/api/dashboard/metrics"],
   });
 
-  const { data: recentVulns, isLoading: vulnsLoading } = useQuery<Vulnerability[]>({
-    queryKey: ["/api/vulnerabilities", { limit: 5 }],
+  const { data: vulnsData, isLoading: vulnsLoading } = useQuery<{ vulnerabilities: Vulnerability[]; total: number }>({
+    queryKey: ["/api/vulnerabilities?limit=5"],
   });
+  const recentVulns = vulnsData?.vulnerabilities;
 
   const { data: recentActions, isLoading: actionsLoading } = useQuery<ActionLog[]>({
-    queryKey: ["/api/actions", { limit: 5 }],
+    queryKey: ["/api/actions?limit=5"],
   });
 
   const { data: authorizations, isLoading: authsLoading } = useQuery<Authorization[]>({

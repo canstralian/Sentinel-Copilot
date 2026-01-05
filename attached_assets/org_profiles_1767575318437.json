@@ -1,0 +1,41 @@
+{
+  "generated_at": "2026-01-05T12:00:00Z",
+  "note": "Synthetic data; non-routable example ranges; no real orgs.",
+  "orgs": [
+    {
+      "org_id": "ORG-ACME",
+      "name": "Acme FinTech AU",
+      "industry": "FinTech",
+      "region": "AU",
+      "risk_appetite": "Medium",
+      "regulatory": [
+        "APRA CPS 234",
+        "PCI DSS"
+      ],
+      "employees": 340
+    },
+    {
+      "org_id": "ORG-ORION",
+      "name": "Orion Health Services",
+      "industry": "Healthcare",
+      "region": "AU",
+      "risk_appetite": "Low",
+      "regulatory": [
+        "Privacy Act AU",
+        "ISO 27001"
+      ],
+      "employees": 1200
+    },
+    {
+      "org_id": "ORG-EMBER",
+      "name": "Ember Retail Group",
+      "industry": "Retail",
+      "region": "AU/NZ",
+      "risk_appetite": "Medium-High",
+      "regulatory": [
+        "PCI DSS"
+      ],
+      "employees": 5200
+    }
+  ]
+}

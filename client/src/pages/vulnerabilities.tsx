@@ -51,8 +51,16 @@ export default function Vulnerabilities() {
   const pageSize = 20;
   const { toast } = useToast();
 
+  const queryParams = new URLSearchParams({
+    page: String(page),
+    pageSize: String(pageSize),
+    ...(searchQuery && { search: searchQuery }),
+    ...(severityFilter !== "all" && { severity: severityFilter }),
+    ...(statusFilter !== "all" && { status: statusFilter }),
+  });
+  
   const { data, isLoading } = useQuery<{ vulnerabilities: Vulnerability[]; total: number }>({
-    queryKey: ["/api/vulnerabilities", { page, pageSize, search: searchQuery, severity: severityFilter, status: statusFilter }],
+    queryKey: [`/api/vulnerabilities?${queryParams.toString()}`],
   });
 
   const updateStatusMutation = useMutation({

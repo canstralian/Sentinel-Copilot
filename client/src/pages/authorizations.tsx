@@ -48,8 +48,10 @@ export default function Authorizations() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const { toast } = useToast();
 
+  const queryParams = statusFilter !== "all" ? `?status=${statusFilter}` : "";
+  
   const { data: authorizations, isLoading } = useQuery<Authorization[]>({
-    queryKey: ["/api/authorizations", { status: statusFilter }],
+    queryKey: [`/api/authorizations${queryParams}`],
   });
 
   const createMutation = useMutation({
