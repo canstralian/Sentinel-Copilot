@@ -73,8 +73,12 @@ export default function Actions() {
       return apiRequest("PATCH", `/api/actions/${id}/approve`, { approved });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/actions"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/metrics"] });
+      queryClient.invalidateQueries({ predicate: (query) => 
+        String(query.queryKey[0]).startsWith("/api/actions")
+      });
+      queryClient.invalidateQueries({ predicate: (query) => 
+        String(query.queryKey[0]).startsWith("/api/dashboard")
+      });
       setApproveDialogOpen(false);
       setActionToApprove(null);
       toast({

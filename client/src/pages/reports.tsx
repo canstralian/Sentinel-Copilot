@@ -32,7 +32,7 @@ export default function Reports() {
   });
 
   const { data: vulnsData } = useQuery<{ vulnerabilities: Vulnerability[]; total: number }>({
-    queryKey: ["/api/vulnerabilities", { limit: 1000 }],
+    queryKey: ["/api/vulnerabilities?limit=1000"],
   });
 
   const vulnerabilities = vulnsData?.vulnerabilities || [];

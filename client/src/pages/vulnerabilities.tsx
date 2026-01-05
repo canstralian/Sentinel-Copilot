@@ -68,8 +68,12 @@ export default function Vulnerabilities() {
       return apiRequest("PATCH", `/api/vulnerabilities/${id}`, { status });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/vulnerabilities"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/metrics"] });
+      queryClient.invalidateQueries({ predicate: (query) => 
+        String(query.queryKey[0]).startsWith("/api/vulnerabilities")
+      });
+      queryClient.invalidateQueries({ predicate: (query) => 
+        String(query.queryKey[0]).startsWith("/api/dashboard")
+      });
       toast({
         title: "Status updated",
         description: "Vulnerability status has been updated successfully.",

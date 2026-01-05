@@ -35,8 +35,13 @@ export default function Controls() {
   const [frameworkFilter, setFrameworkFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
+  const queryParams = new URLSearchParams({
+    ...(frameworkFilter !== "all" && { framework: frameworkFilter }),
+    ...(statusFilter !== "all" && { status: statusFilter }),
+  }).toString();
+  
   const { data: controls, isLoading } = useQuery<SecurityControl[]>({
-    queryKey: ["/api/controls", { framework: frameworkFilter, status: statusFilter }],
+    queryKey: [`/api/controls${queryParams ? `?${queryParams}` : ""}`],
   });
 
   const filteredControls = controls?.filter((control) => {

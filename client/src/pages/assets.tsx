@@ -84,8 +84,12 @@ export default function Assets() {
       return apiRequest("POST", "/api/assets", asset);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/assets"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/metrics"] });
+      queryClient.invalidateQueries({ predicate: (query) => 
+        String(query.queryKey[0]).startsWith("/api/assets")
+      });
+      queryClient.invalidateQueries({ predicate: (query) => 
+        String(query.queryKey[0]).startsWith("/api/dashboard")
+      });
       setCreateOpen(false);
       toast({
         title: "Asset created",

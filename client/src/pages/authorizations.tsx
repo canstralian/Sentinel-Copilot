@@ -59,8 +59,12 @@ export default function Authorizations() {
       return apiRequest("POST", "/api/authorizations", auth);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/authorizations"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/metrics"] });
+      queryClient.invalidateQueries({ predicate: (query) => 
+        String(query.queryKey[0]).startsWith("/api/authorizations")
+      });
+      queryClient.invalidateQueries({ predicate: (query) => 
+        String(query.queryKey[0]).startsWith("/api/dashboard")
+      });
       setCreateOpen(false);
       form.reset();
       toast({
