@@ -1,7 +1,26 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import type { InsertAsset, InsertAuthorization, InsertActionLog, Severity, AssetType, ExposureType, AuthModel, AttackPhase } from "@shared/schema";
+import { 
+  insertAssetSchema, 
+  insertAuthorizationSchema, 
+  insertActionLogSchema,
+  updateVulnerabilitySchema,
+  type AssetType, 
+  type ExposureType, 
+  type AuthModel, 
+  type AttackPhase,
+  type Severity 
+} from "@shared/schema";
+import { ZodError } from "zod";
+
+function handleZodError(res: any, error: ZodError) {
+  const errors = error.errors.map(e => ({
+    field: e.path.join('.'),
+    message: e.message
+  }));
+  res.status(400).json({ error: "Validation failed", details: errors });
+}
 
 export async function registerRoutes(
   httpServer: Server,
@@ -13,6 +32,7 @@ export async function registerRoutes(
       const metrics = await storage.getDashboardMetrics();
       res.json(metrics);
     } catch (error) {
+      console.error("Error fetching dashboard metrics:", error);
       res.status(500).json({ error: "Failed to fetch dashboard metrics" });
     }
   });
@@ -34,6 +54,7 @@ export async function registerRoutes(
       
       res.json({ assets: paginatedAssets, total: assets.length });
     } catch (error) {
+      console.error("Error fetching assets:", error);
       res.status(500).json({ error: "Failed to fetch assets" });
     }
   });
@@ -46,15 +67,21 @@ export async function registerRoutes(
       }
       res.json(asset);
     } catch (error) {
+      console.error("Error fetching asset:", error);
       res.status(500).json({ error: "Failed to fetch asset" });
     }
   });
 
   app.post("/api/assets", async (req, res) => {
     try {
-      const asset = await storage.createAsset(req.body as InsertAsset);
+      const validatedData = insertAssetSchema.parse(req.body);
+      const asset = await storage.createAsset(validatedData);
       res.status(201).json(asset);
     } catch (error) {
+      if (error instanceof ZodError) {
+        return handleZodError(res, error);
+      }
+      console.error("Error creating asset:", error);
       res.status(500).json({ error: "Failed to create asset" });
     }
   });
@@ -67,6 +94,7 @@ export async function registerRoutes(
       }
       res.json(asset);
     } catch (error) {
+      console.error("Error updating asset:", error);
       res.status(500).json({ error: "Failed to update asset" });
     }
   });
@@ -79,6 +107,7 @@ export async function registerRoutes(
       }
       res.status(204).send();
     } catch (error) {
+      console.error("Error deleting asset:", error);
       res.status(500).json({ error: "Failed to delete asset" });
     }
   });
@@ -101,6 +130,7 @@ export async function registerRoutes(
       
       res.json({ vulnerabilities: paginatedVulns, total: vulns.length });
     } catch (error) {
+      console.error("Error fetching vulnerabilities:", error);
       res.status(500).json({ error: "Failed to fetch vulnerabilities" });
     }
   });
@@ -113,18 +143,24 @@ export async function registerRoutes(
       }
       res.json(vuln);
     } catch (error) {
+      console.error("Error fetching vulnerability:", error);
       res.status(500).json({ error: "Failed to fetch vulnerability" });
     }
   });
 
   app.patch("/api/vulnerabilities/:id", async (req, res) => {
     try {
-      const vuln = await storage.updateVulnerability(req.params.id, req.body);
+      const validatedData = updateVulnerabilitySchema.parse(req.body);
+      const vuln = await storage.updateVulnerability(req.params.id, validatedData);
       if (!vuln) {
         return res.status(404).json({ error: "Vulnerability not found" });
       }
       res.json(vuln);
     } catch (error) {
+      if (error instanceof ZodError) {
+        return handleZodError(res, error);
+      }
+      console.error("Error updating vulnerability:", error);
       res.status(500).json({ error: "Failed to update vulnerability" });
     }
   });
@@ -134,28 +170,32 @@ export async function registerRoutes(
     try {
       const { data } = req.body as { data: Array<Record<string, string>> };
       
+      if (!Array.isArray(data)) {
+        return res.status(400).json({ error: "Data must be an array" });
+      }
+      
       const vulns = data.map((row) => {
         const techStack = row.tech_stack ? row.tech_stack.split(",").map((s: string) => s.trim()) : [];
         const recommendedActions = row.recommended_actions ? row.recommended_actions.split("|").map((s: string) => s.trim()) : [];
         
         return {
-          assetId: row.id,
-          assetType: row.asset_type as AssetType,
-          exposure: row.exposure as ExposureType,
-          authModel: row.auth_model as AuthModel,
+          assetId: row.id || "",
+          assetType: (row.asset_type || "web_application") as AssetType,
+          exposure: (row.exposure || "internal") as ExposureType,
+          authModel: (row.auth_model || "none") as AuthModel,
           provider: row.provider || "",
           region: row.region || "",
           techStack,
-          vulnClass: row.vuln_class,
-          cwe: row.cwe,
-          severity: row.severity as Severity,
-          confidence: parseFloat(row.confidence) || 0,
-          signalSource: row.signal_source,
-          symptoms: row.symptoms,
-          attackPhase: row.attack_phase as AttackPhase,
-          dataExposure: row.data_exposure,
-          privilegeGain: row.privilege_gain,
-          blastRadius: row.blast_radius,
+          vulnClass: row.vuln_class || "Unknown",
+          cwe: row.cwe || "CWE-000",
+          severity: (row.severity || "medium") as Severity,
+          confidence: parseFloat(row.confidence) || 0.5,
+          signalSource: row.signal_source || "manual",
+          symptoms: row.symptoms || "",
+          attackPhase: (row.attack_phase || "reconnaissance") as AttackPhase,
+          dataExposure: row.data_exposure || "",
+          privilegeGain: row.privilege_gain || "",
+          blastRadius: row.blast_radius || "",
           noAuth: row.no_auth === "True",
           rateLimited: row.rate_limited === "True",
           recommendedActions,
@@ -181,6 +221,7 @@ export async function registerRoutes(
       });
       res.json(auths);
     } catch (error) {
+      console.error("Error fetching authorizations:", error);
       res.status(500).json({ error: "Failed to fetch authorizations" });
     }
   });
@@ -193,15 +234,21 @@ export async function registerRoutes(
       }
       res.json(auth);
     } catch (error) {
+      console.error("Error fetching authorization:", error);
       res.status(500).json({ error: "Failed to fetch authorization" });
     }
   });
 
   app.post("/api/authorizations", async (req, res) => {
     try {
-      const auth = await storage.createAuthorization(req.body as InsertAuthorization);
+      const validatedData = insertAuthorizationSchema.parse(req.body);
+      const auth = await storage.createAuthorization(validatedData);
       res.status(201).json(auth);
     } catch (error) {
+      if (error instanceof ZodError) {
+        return handleZodError(res, error);
+      }
+      console.error("Error creating authorization:", error);
       res.status(500).json({ error: "Failed to create authorization" });
     }
   });
@@ -214,6 +261,7 @@ export async function registerRoutes(
       }
       res.json(auth);
     } catch (error) {
+      console.error("Error updating authorization:", error);
       res.status(500).json({ error: "Failed to update authorization" });
     }
   });
@@ -233,6 +281,7 @@ export async function registerRoutes(
       
       res.json(actions);
     } catch (error) {
+      console.error("Error fetching actions:", error);
       res.status(500).json({ error: "Failed to fetch actions" });
     }
   });
@@ -245,15 +294,21 @@ export async function registerRoutes(
       }
       res.json(action);
     } catch (error) {
+      console.error("Error fetching action:", error);
       res.status(500).json({ error: "Failed to fetch action" });
     }
   });
 
   app.post("/api/actions", async (req, res) => {
     try {
-      const action = await storage.createAction(req.body as InsertActionLog);
+      const validatedData = insertActionLogSchema.parse(req.body);
+      const action = await storage.createAction(validatedData);
       res.status(201).json(action);
     } catch (error) {
+      if (error instanceof ZodError) {
+        return handleZodError(res, error);
+      }
+      console.error("Error creating action:", error);
       res.status(500).json({ error: "Failed to create action" });
     }
   });
@@ -271,6 +326,7 @@ export async function registerRoutes(
         res.status(400).json({ error: "Invalid approval status" });
       }
     } catch (error) {
+      console.error("Error approving action:", error);
       res.status(500).json({ error: "Failed to approve action" });
     }
   });
@@ -285,6 +341,7 @@ export async function registerRoutes(
       });
       res.json(controls);
     } catch (error) {
+      console.error("Error fetching controls:", error);
       res.status(500).json({ error: "Failed to fetch controls" });
     }
   });
@@ -297,6 +354,7 @@ export async function registerRoutes(
       }
       res.json(control);
     } catch (error) {
+      console.error("Error fetching control:", error);
       res.status(500).json({ error: "Failed to fetch control" });
     }
   });

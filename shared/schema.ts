@@ -255,6 +255,84 @@ export interface DashboardMetrics {
   controlsCoverage: number;
 }
 
+// Zod validation schemas for API requests
+
+export const insertAssetSchema = z.object({
+  name: z.string().min(1, "Name is required"),
+  type: z.enum(["web_application", "api", "cloud_storage", "database", "kubernetes_cluster", "container", "iam_role", "ci_cd_pipeline", "message_queue"]),
+  exposure: z.enum(["internet_facing", "internal", "partner_exposed"]),
+  authModel: z.enum(["none", "basic_auth", "oauth2", "jwt", "session_cookie", "sso_saml"]),
+  provider: z.string().default(""),
+  region: z.string().default(""),
+  techStack: z.array(z.string()).default([]),
+  inScope: z.boolean().default(true),
+  authorized: z.boolean().default(false),
+  authorizationId: z.string().optional(),
+});
+
+export const insertVulnerabilitySchema = z.object({
+  assetId: z.string(),
+  assetType: z.enum(["web_application", "api", "cloud_storage", "database", "kubernetes_cluster", "container", "iam_role", "ci_cd_pipeline", "message_queue"]),
+  exposure: z.enum(["internet_facing", "internal", "partner_exposed"]),
+  authModel: z.enum(["none", "basic_auth", "oauth2", "jwt", "session_cookie", "sso_saml"]),
+  provider: z.string().default(""),
+  region: z.string().default(""),
+  techStack: z.array(z.string()).default([]),
+  vulnClass: z.string(),
+  cwe: z.string(),
+  severity: z.enum(["critical", "high", "medium", "low", "info"]),
+  confidence: z.number().min(0).max(1),
+  signalSource: z.string(),
+  symptoms: z.string(),
+  attackPhase: z.enum(["reconnaissance", "initial_access", "execution", "persistence", "privilege_escalation", "lateral_movement", "exfiltration"]),
+  dataExposure: z.string().default(""),
+  privilegeGain: z.string().default(""),
+  blastRadius: z.string().default(""),
+  noAuth: z.boolean().default(false),
+  rateLimited: z.boolean().default(false),
+  recommendedActions: z.array(z.string()).default([]),
+  exploitable: z.boolean().default(false),
+  falsePositive: z.boolean().default(false),
+});
+
+export const updateVulnerabilitySchema = z.object({
+  status: z.enum(["open", "in_progress", "remediated", "accepted", "false_positive"]).optional(),
+  assignee: z.string().optional(),
+  remediationNotes: z.string().optional(),
+});
+
+export const insertAuthorizationSchema = z.object({
+  title: z.string().min(1, "Title is required"),
+  scope: z.string().min(1, "Scope is required"),
+  startDate: z.string(),
+  endDate: z.string(),
+  authorizedBy: z.string().min(1, "Authorizer is required"),
+  targetAssets: z.array(z.string()).default([]),
+  restrictions: z.array(z.string()).default([]),
+  documentUrl: z.string().optional(),
+});
+
+export const insertActionLogSchema = z.object({
+  action: z.string().min(1, "Action is required"),
+  command: z.string().optional(),
+  intent: z.string().min(1, "Intent is required"),
+  riskLevel: z.enum(["low", "medium", "high", "critical"]),
+  targetAsset: z.string().min(1, "Target asset is required"),
+  requiresApproval: z.boolean().default(false),
+  rollbackProcedure: z.string().optional(),
+  notes: z.string().optional(),
+});
+
+export const insertSecurityControlSchema = z.object({
+  framework: z.enum(["NIST", "ISO27001", "CIS"]),
+  controlId: z.string().min(1),
+  title: z.string().min(1),
+  description: z.string(),
+  category: z.string().min(1),
+  status: z.enum(["implemented", "partial", "planned", "not_applicable"]),
+  linkedVulnerabilities: z.array(z.string()).default([]),
+});
+
 // CSV import schema for vulnerabilities
 export const vulnerabilityCsvSchema = z.object({
   id: z.string(),
