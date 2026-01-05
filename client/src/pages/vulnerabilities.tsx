@@ -121,11 +121,11 @@ export default function Vulnerabilities() {
           <div className="w-16 h-2 bg-muted rounded-full overflow-hidden">
             <div
               className="h-full bg-primary rounded-full"
-              style={{ width: `${item.confidence * 100}%` }}
+              style={{ width: `${item.confidence}%` }}
             />
           </div>
           <span className="text-xs text-muted-foreground">
-            {Math.round(item.confidence * 100)}%
+            {Math.round(item.confidence)}%
           </span>
         </div>
       ),
@@ -269,7 +269,7 @@ export default function Vulnerabilities() {
                     </div>
                     <div>
                       <Label className="text-xs text-muted-foreground">Confidence</Label>
-                      <div className="mt-1 text-sm">{Math.round(selectedVuln.confidence * 100)}%</div>
+                      <div className="mt-1 text-sm">{Math.round(selectedVuln.confidence)}%</div>
                     </div>
                     <div>
                       <Label className="text-xs text-muted-foreground">Signal Source</Label>
