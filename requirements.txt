@@ -1,0 +1,4 @@
+# Sentinel-Copilot has no external dependencies
+# All functionality uses Python standard library only
+#
+# Python >= 3.8 required

@@ -1,0 +1,25 @@
+{
+  "thresholds": {
+    "cpu": 80,
+    "memory": 85,
+    "disk": 90,
+    "network": 75
+  },
+  "severity": {
+    "critical_ratio": 1.5,
+    "high_ratio": 1.2,
+    "medium_ratio": 1.0
+  },
+  "throttling": {
+    "enabled": true,
+    "throttle_minutes": 15
+  },
+  "channels": {
+    "log_file": "alerts.log",
+    "default_channels": ["console", "log"]
+  },
+  "async_io": {
+    "enabled": true,
+    "queue_size": 1000
+  }
+}

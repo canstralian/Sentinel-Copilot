@@ -5,15 +5,16 @@ Tests to ensure refactored code maintains the same behavior as the original.
 import unittest
 import time
 import os
-from sentinel_monitor import SystemMonitor as OriginalMonitor
-from sentinel_monitor_refactored import (
+from sentinel_monitor_original import SystemMonitor as OriginalMonitor
+from sentinel_monitor import (
     SystemMonitor as RefactoredMonitor,
     Severity,
     MetricsValidator,
     SeverityCalculator,
     AlertThrottler,
     AlertFormatter,
-    StatisticsAggregator
+    StatisticsAggregator,
+    Config
 )
 
 
@@ -51,25 +52,29 @@ class TestMetricsValidator(unittest.TestCase):
 class TestSeverityCalculator(unittest.TestCase):
     """Test severity calculation logic"""
 
+    def setUp(self):
+        """Set up test fixtures"""
+        self.calculator = SeverityCalculator()
+
     def test_severity_levels(self):
         """Test different severity levels based on threshold exceedance"""
         threshold = 80
 
         # Low severity (just over threshold)
-        severity = SeverityCalculator.calculate(81, threshold)
+        severity = self.calculator.calculate(81, threshold)
         self.assertEqual(Severity.MEDIUM, severity)
 
         # High severity (1.2x threshold)
-        severity = SeverityCalculator.calculate(97, threshold)
+        severity = self.calculator.calculate(97, threshold)
         self.assertEqual(Severity.HIGH, severity)
 
         # Critical severity (1.5x threshold)
-        severity = SeverityCalculator.calculate(125, threshold)
+        severity = self.calculator.calculate(125, threshold)
         self.assertEqual(Severity.CRITICAL, severity)
 
     def test_custom_severity(self):
         """Custom severity should override calculation"""
-        severity = SeverityCalculator.calculate(150, 80, 'low')
+        severity = self.calculator.calculate(150, 80, 'low')
         self.assertEqual(Severity.LOW, severity)
 
 
