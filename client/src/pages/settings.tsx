@@ -215,7 +215,7 @@ export default function Settings() {
               <div className="flex gap-2 mt-2">
                 <Input
                   type="password"
-                  value="sk-xxxx-xxxx-xxxx-xxxx"
+                  value="••••••••••••••••••••"
                   readOnly
                   className="font-mono text-sm"
                   data-testid="input-api-key"
