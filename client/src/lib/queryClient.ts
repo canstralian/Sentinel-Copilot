@@ -2,7 +2,12 @@ import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
-    const text = (await res.text()) || res.statusText;
+    let text: string;
+    try {
+      text = (await res.text()) || res.statusText;
+    } catch {
+      text = res.statusText;
+    }
     throw new Error(`${res.status}: ${text}`);
   }
 }
@@ -21,6 +26,33 @@ export async function apiRequest(
 
   await throwIfResNotOk(res);
   return res;
+}
+
+export function invalidateVulnerabilities() {
+  queryClient.invalidateQueries({ 
+    predicate: (query) => {
+      const key = String(query.queryKey[0]);
+      return key.startsWith("/api/vulnerabilities") || key === "vulnerabilities";
+    }
+  });
+}
+
+export function invalidateDashboard() {
+  queryClient.invalidateQueries({ 
+    predicate: (query) => {
+      const key = String(query.queryKey[0]);
+      return key.startsWith("/api/dashboard") || key === "dashboard";
+    }
+  });
+}
+
+export function invalidateAssets() {
+  queryClient.invalidateQueries({ 
+    predicate: (query) => {
+      const key = String(query.queryKey[0]);
+      return key.startsWith("/api/assets") || key === "assets";
+    }
+  });
 }
 
 type UnauthorizedBehavior = "returnNull" | "throw";

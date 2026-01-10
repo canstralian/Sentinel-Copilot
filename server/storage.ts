@@ -1,4 +1,4 @@
-import { eq, ilike, and, sql, desc, count, gte, isNull, isNotNull } from "drizzle-orm";
+import { eq, ilike, and, sql, desc, count, gte, isNull, isNotNull, inArray } from "drizzle-orm";
 import { db } from "./db";
 import {
   users,
@@ -25,7 +25,7 @@ export interface IStorage {
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
 
-  getAssets(filters?: { type?: string; search?: string }): Promise<Asset[]>;
+  getAssets(filters?: { type?: string; search?: string; page?: number; pageSize?: number }): Promise<{ assets: Asset[]; total: number }>;
   getAsset(id: string): Promise<Asset | undefined>;
   createAsset(asset: InsertAsset): Promise<Asset>;
   updateAsset(id: string, updates: Partial<Asset>): Promise<Asset | undefined>;
@@ -38,7 +38,9 @@ export interface IStorage {
     limit?: number;
     hasJira?: boolean;
     assignee?: string;
-  }): Promise<Vulnerability[]>;
+    page?: number;
+    pageSize?: number;
+  }): Promise<{ vulnerabilities: Vulnerability[]; total: number }>;
   getVulnerability(id: string): Promise<Vulnerability | undefined>;
   createVulnerability(vuln: InsertVulnerability): Promise<Vulnerability>;
   updateVulnerability(id: string, updates: Partial<Vulnerability>): Promise<Vulnerability | undefined>;
@@ -70,7 +72,7 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
-  async getAssets(filters?: { type?: string; search?: string }): Promise<Asset[]> {
+  async getAssets(filters?: { type?: string; search?: string; page?: number; pageSize?: number }): Promise<{ assets: Asset[]; total: number }> {
     const conditions = [];
     
     if (filters?.type) {
@@ -80,10 +82,22 @@ export class DatabaseStorage implements IStorage {
       conditions.push(ilike(assets.name, `%${filters.search}%`));
     }
 
-    if (conditions.length > 0) {
-      return await db.select().from(assets).where(and(...conditions));
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+    
+    const [countResult] = await db.select({ count: count() }).from(assets).where(whereClause);
+    const total = Number(countResult?.count ?? 0);
+    
+    const page = filters?.page ?? 1;
+    const pageSize = filters?.pageSize ?? 20;
+    const offset = (page - 1) * pageSize;
+    
+    let query = db.select().from(assets);
+    if (whereClause) {
+      query = query.where(whereClause) as typeof query;
     }
-    return await db.select().from(assets);
+    const result = await query.limit(pageSize).offset(offset);
+    
+    return { assets: result, total };
   }
 
   async getAsset(id: string): Promise<Asset | undefined> {
@@ -113,7 +127,9 @@ export class DatabaseStorage implements IStorage {
     limit?: number;
     hasJira?: boolean;
     assignee?: string;
-  }): Promise<Vulnerability[]> {
+    page?: number;
+    pageSize?: number;
+  }): Promise<{ vulnerabilities: Vulnerability[]; total: number }> {
     const conditions = [];
     
     if (filters?.severity) {
@@ -134,19 +150,28 @@ export class DatabaseStorage implements IStorage {
       conditions.push(eq(vulnerabilities.assignee, filters.assignee));
     }
 
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+    
+    const [countResult] = await db.select({ count: count() }).from(vulnerabilities).where(whereClause);
+    const total = Number(countResult?.count ?? 0);
+
     let query = db.select().from(vulnerabilities);
     
-    if (conditions.length > 0) {
-      query = query.where(and(...conditions)) as typeof query;
+    if (whereClause) {
+      query = query.where(whereClause) as typeof query;
     }
     
     query = query.orderBy(desc(vulnerabilities.riskScore), desc(vulnerabilities.createdAt)) as typeof query;
     
     if (filters?.limit) {
       query = query.limit(filters.limit) as typeof query;
+    } else if (filters?.page !== undefined && filters?.pageSize !== undefined) {
+      const offset = (filters.page - 1) * filters.pageSize;
+      query = query.limit(filters.pageSize).offset(offset) as typeof query;
     }
 
-    return await query;
+    const result = await query;
+    return { vulnerabilities: result, total };
   }
 
   async getVulnerability(id: string): Promise<Vulnerability | undefined> {
@@ -196,15 +221,12 @@ export class DatabaseStorage implements IStorage {
       updateData.resolvedAt = new Date();
     }
     
-    let count = 0;
-    for (const id of ids) {
-      const result = await db.update(vulnerabilities)
-        .set(updateData)
-        .where(eq(vulnerabilities.id, id))
-        .returning();
-      if (result.length > 0) count++;
-    }
-    return count;
+    const result = await db.update(vulnerabilities)
+      .set(updateData)
+      .where(inArray(vulnerabilities.id, ids))
+      .returning();
+    
+    return result.length;
   }
 
   async importVulnerabilities(vulns: InsertVulnerability[]): Promise<number> {

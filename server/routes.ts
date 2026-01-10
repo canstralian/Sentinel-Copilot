@@ -1,4 +1,4 @@
-import type { Express } from "express";
+import type { Express, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { logger } from "./logger";
@@ -10,9 +10,11 @@ import {
   insertJiraConfigSchema,
   type Severity,
 } from "@shared/schema";
-import { ZodError } from "zod";
+import { ZodError, z } from "zod";
 
-function handleZodError(res: any, error: ZodError) {
+const updateAssetSchema = insertAssetSchema.partial();
+
+function handleZodError(res: Response, error: ZodError) {
   const errors = error.errors.map(e => ({
     field: e.path.join('.'),
     message: e.message
@@ -46,24 +48,21 @@ export async function registerRoutes(
     try {
       const { type, search, page, pageSize } = req.query;
       const filters = {
-        type: type as string,
-        search: search as string,
+        type: type as string | undefined,
+        search: search as string | undefined,
+        page: parseInt(page as string) || 1,
+        pageSize: parseInt(pageSize as string) || 20,
       };
       logger.storage("Fetching assets", { filters });
-      const assets = await storage.getAssets(filters);
-      
-      const p = parseInt(page as string) || 1;
-      const ps = parseInt(pageSize as string) || 20;
-      const start = (p - 1) * ps;
-      const paginatedAssets = assets.slice(start, start + ps);
+      const result = await storage.getAssets(filters);
       
       logger.debug("API", "Assets retrieved", { 
-        total: assets.length, 
-        page: p, 
-        pageSize: ps,
-        returned: paginatedAssets.length 
+        total: result.total, 
+        page: filters.page, 
+        pageSize: filters.pageSize,
+        returned: result.assets.length 
       });
-      res.json({ assets: paginatedAssets, total: assets.length });
+      res.json(result);
     } catch (error) {
       logger.error("API", "Error fetching assets", { error });
       res.status(500).json({ error: "Failed to fetch assets" });
@@ -113,7 +112,9 @@ export async function registerRoutes(
   app.patch("/api/assets/:id", async (req, res) => {
     try {
       logger.debug("API", "Updating asset", { id: req.params.id, updates: Object.keys(req.body) });
-      const asset = await storage.updateAsset(req.params.id, req.body);
+      const validatedData = updateAssetSchema.parse(req.body);
+      logger.validation(true, { schema: "updateAssetSchema" });
+      const asset = await storage.updateAsset(req.params.id, validatedData);
       if (!asset) {
         logger.warn("API", "Asset not found for update", { id: req.params.id });
         return res.status(404).json({ error: "Asset not found" });
@@ -129,6 +130,9 @@ export async function registerRoutes(
       logger.audit("Asset updated", { id: asset.id, name: asset.name });
       res.json(asset);
     } catch (error) {
+      if (error instanceof ZodError) {
+        return handleZodError(res, error);
+      }
       logger.error("API", "Error updating asset", { id: req.params.id, error });
       res.status(500).json({ error: "Failed to update asset" });
     }
@@ -163,27 +167,24 @@ export async function registerRoutes(
     try {
       const { severity, status, search, page, pageSize, limit, hasJira, assignee } = req.query;
       const filters = {
-        severity: severity as string,
-        status: status as string,
-        search: search as string,
+        severity: severity as string | undefined,
+        status: status as string | undefined,
+        search: search as string | undefined,
         limit: limit ? parseInt(limit as string) : undefined,
         hasJira: hasJira === "true" ? true : hasJira === "false" ? false : undefined,
-        assignee: assignee as string,
+        assignee: assignee as string | undefined,
+        page: parseInt(page as string) || 1,
+        pageSize: parseInt(pageSize as string) || 20,
       };
       logger.storage("Fetching vulnerabilities", { filters });
-      const vulns = await storage.getVulnerabilities(filters);
-      
-      const p = parseInt(page as string) || 1;
-      const ps = parseInt(pageSize as string) || 20;
-      const start = (p - 1) * ps;
-      const paginatedVulns = vulns.slice(start, start + ps);
+      const result = await storage.getVulnerabilities(filters);
       
       logger.debug("API", "Vulnerabilities retrieved", { 
-        total: vulns.length, 
-        page: p,
-        returned: paginatedVulns.length 
+        total: result.total, 
+        page: filters.page,
+        returned: result.vulnerabilities.length 
       });
-      res.json({ vulnerabilities: paginatedVulns, total: vulns.length });
+      res.json(result);
     } catch (error) {
       logger.error("API", "Error fetching vulnerabilities", { error });
       res.status(500).json({ error: "Failed to fetch vulnerabilities" });

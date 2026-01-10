@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -42,13 +42,56 @@ import {
   ExternalLink,
   AlertTriangle,
   CheckCircle,
-  Clock,
-  User,
-  FileText,
+  Trash2,
+  Edit,
 } from "lucide-react";
 import type { Vulnerability, JiraConfig } from "@shared/schema";
-import { queryClient, apiRequest } from "@/lib/queryClient";
+import { apiRequest, invalidateVulnerabilities, invalidateDashboard } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+
+function parseCSV(text: string): Record<string, string>[] {
+  const lines = text.split(/\r?\n/);
+  if (lines.length === 0) return [];
+  
+  const parseRow = (row: string): string[] => {
+    const result: string[] = [];
+    let current = '';
+    let inQuotes = false;
+    
+    for (let i = 0; i < row.length; i++) {
+      const char = row[i];
+      
+      if (char === '"') {
+        if (inQuotes && row[i + 1] === '"') {
+          current += '"';
+          i++;
+        } else {
+          inQuotes = !inQuotes;
+        }
+      } else if (char === ',' && !inQuotes) {
+        result.push(current.trim());
+        current = '';
+      } else {
+        current += char;
+      }
+    }
+    result.push(current.trim());
+    return result;
+  };
+  
+  const headers = parseRow(lines[0]).map(h => h.toLowerCase().replace(/\s+/g, "_"));
+  
+  return lines.slice(1)
+    .filter(line => line.trim())
+    .map(line => {
+      const values = parseRow(line);
+      const row: Record<string, string> = {};
+      headers.forEach((header, i) => {
+        row[header] = values[i] || "";
+      });
+      return row;
+    });
+}
 
 export default function Vulnerabilities() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -57,21 +100,28 @@ export default function Vulnerabilities() {
   const [selectedVuln, setSelectedVuln] = useState<Vulnerability | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [importOpen, setImportOpen] = useState(false);
+  const [bulkActionOpen, setBulkActionOpen] = useState(false);
+  const [bulkStatus, setBulkStatus] = useState<string>("in_progress");
   const [page, setPage] = useState(1);
   const pageSize = 20;
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const queryParams = new URLSearchParams({
-    page: String(page),
-    pageSize: String(pageSize),
-    ...(searchQuery && { search: searchQuery }),
-    ...(severityFilter !== "all" && { severity: severityFilter }),
-    ...(statusFilter !== "all" && { status: statusFilter }),
-  });
+  const queryKey = useMemo(() => {
+    const params: Record<string, string> = {
+      page: String(page),
+      pageSize: String(pageSize),
+    };
+    if (searchQuery) params.search = searchQuery;
+    if (severityFilter !== "all") params.severity = severityFilter;
+    if (statusFilter !== "all") params.status = statusFilter;
+    return ["/api/vulnerabilities", params] as const;
+  }, [page, pageSize, searchQuery, severityFilter, statusFilter]);
+
+  const queryString = new URLSearchParams(queryKey[1]).toString();
   
   const { data, isLoading } = useQuery<{ vulnerabilities: Vulnerability[]; total: number }>({
-    queryKey: [`/api/vulnerabilities?${queryParams.toString()}`],
+    queryKey: [`/api/vulnerabilities?${queryString}`],
   });
 
   const { data: jiraConfig } = useQuery<JiraConfig>({
@@ -80,18 +130,46 @@ export default function Vulnerabilities() {
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, updates }: { id: string; updates: Partial<Vulnerability> }) => {
-      return apiRequest("PATCH", `/api/vulnerabilities/${id}`, updates);
+      const response = await apiRequest("PATCH", `/api/vulnerabilities/${id}`, updates);
+      return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ predicate: (query) => 
-        String(query.queryKey[0]).startsWith("/api/vulnerabilities")
-      });
-      queryClient.invalidateQueries({ predicate: (query) => 
-        String(query.queryKey[0]).startsWith("/api/dashboard")
-      });
+      invalidateVulnerabilities();
+      invalidateDashboard();
       toast({
         title: "Updated",
         description: "Vulnerability updated successfully.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Update failed",
+        description: error.message || "Failed to update vulnerability.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const bulkUpdateMutation = useMutation({
+    mutationFn: async ({ ids, updates }: { ids: string[]; updates: Partial<Vulnerability> }) => {
+      const response = await apiRequest("POST", "/api/vulnerabilities/bulk-update", { ids, updates });
+      return response.json();
+    },
+    onSuccess: (result: { updated: number }) => {
+      invalidateVulnerabilities();
+      invalidateDashboard();
+      setSelectedIds(new Set());
+      setBulkActionOpen(false);
+      toast({
+        title: "Bulk update successful",
+        description: `Updated ${result.updated} vulnerabilities.`,
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Bulk update failed",
+        description: error.message || "Failed to update vulnerabilities.",
+        variant: "destructive",
       });
     },
   });
@@ -100,10 +178,9 @@ export default function Vulnerabilities() {
     mutationFn: async (id: string) => {
       return apiRequest("POST", `/api/vulnerabilities/${id}/jira`, {});
     },
-    onSuccess: (data: any) => {
-      queryClient.invalidateQueries({ predicate: (query) => 
-        String(query.queryKey[0]).startsWith("/api/vulnerabilities")
-      });
+    onSuccess: async (response) => {
+      const data = await response.json();
+      invalidateVulnerabilities();
       if (selectedVuln) {
         setSelectedVuln({ ...selectedVuln, jiraKey: data.jiraKey, jiraUrl: data.jiraUrl });
       }
@@ -112,7 +189,7 @@ export default function Vulnerabilities() {
         description: `Created ${data.jiraKey}`,
       });
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({
         title: "Failed to create Jira ticket",
         description: error.message || "Please check your Jira configuration in Settings.",
@@ -125,13 +202,10 @@ export default function Vulnerabilities() {
     mutationFn: async (data: Record<string, string>[]) => {
       return apiRequest("POST", "/api/vulnerabilities/import", { data });
     },
-    onSuccess: (result: any) => {
-      queryClient.invalidateQueries({ predicate: (query) => 
-        String(query.queryKey[0]).startsWith("/api/vulnerabilities")
-      });
-      queryClient.invalidateQueries({ predicate: (query) => 
-        String(query.queryKey[0]).startsWith("/api/dashboard")
-      });
+    onSuccess: async (response) => {
+      const result = await response.json();
+      invalidateVulnerabilities();
+      invalidateDashboard();
       setImportOpen(false);
       toast({
         title: "Import successful",
@@ -155,28 +229,44 @@ export default function Vulnerabilities() {
     reader.onload = (e) => {
       try {
         const text = e.target?.result as string;
-        const lines = text.split("\n");
-        const headers = lines[0].split(",").map(h => h.trim().toLowerCase().replace(/\s+/g, "_"));
+        const data = parseCSV(text);
         
-        const data = lines.slice(1).filter(line => line.trim()).map(line => {
-          const values = line.split(",").map(v => v.trim());
-          const row: Record<string, string> = {};
-          headers.forEach((header, i) => {
-            row[header] = values[i] || "";
+        if (data.length === 0) {
+          toast({
+            title: "Empty file",
+            description: "The CSV file contains no data rows.",
+            variant: "destructive",
           });
-          return row;
-        });
+          return;
+        }
 
         importMutation.mutate(data);
       } catch {
         toast({
           title: "Parse error",
-          description: "Failed to parse CSV file.",
+          description: "Failed to parse CSV file. Please check the file format.",
           variant: "destructive",
         });
       }
     };
     reader.readAsText(file);
+  };
+
+  const handleBulkUpdate = () => {
+    if (selectedIds.size === 0) return;
+    bulkUpdateMutation.mutate({ 
+      ids: Array.from(selectedIds), 
+      updates: { status: bulkStatus } 
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (!data?.vulnerabilities) return;
+    if (selectedIds.size === data.vulnerabilities.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(data.vulnerabilities.map(v => v.id)));
+    }
   };
 
   const toggleSelection = (id: string) => {
@@ -280,12 +370,23 @@ export default function Vulnerabilities() {
         title="Vulnerabilities"
         description="Import, prioritize, and track vulnerability remediation"
         actions={
-          <>
+          <div className="flex gap-2 flex-wrap">
+            {selectedIds.size > 0 && (
+              <Button 
+                variant="secondary" 
+                size="sm" 
+                onClick={() => setBulkActionOpen(true)}
+                data-testid="button-bulk-action"
+              >
+                <Edit className="h-4 w-4 mr-2" />
+                Update {selectedIds.size} selected
+              </Button>
+            )}
             <Button variant="outline" size="sm" onClick={() => setImportOpen(true)} data-testid="button-import-vulns">
               <Upload className="h-4 w-4 mr-2" />
               Import CSV
             </Button>
-          </>
+          </div>
         }
       />
 
@@ -558,6 +659,44 @@ export default function Vulnerabilities() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setImportOpen(false)}>
               Cancel
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={bulkActionOpen} onOpenChange={setBulkActionOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Bulk Update Vulnerabilities</DialogTitle>
+            <DialogDescription>
+              Update the status of {selectedIds.size} selected vulnerabilities
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Label className="text-sm font-medium">New Status</Label>
+            <Select value={bulkStatus} onValueChange={setBulkStatus}>
+              <SelectTrigger className="mt-2" data-testid="select-bulk-status">
+                <SelectValue placeholder="Select status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="open">Open</SelectItem>
+                <SelectItem value="in_progress">In Progress</SelectItem>
+                <SelectItem value="resolved">Resolved</SelectItem>
+                <SelectItem value="accepted">Accepted</SelectItem>
+                <SelectItem value="false_positive">False Positive</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setBulkActionOpen(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleBulkUpdate}
+              disabled={bulkUpdateMutation.isPending}
+              data-testid="button-confirm-bulk-update"
+            >
+              {bulkUpdateMutation.isPending ? "Updating..." : "Update All"}
             </Button>
           </DialogFooter>
         </DialogContent>
