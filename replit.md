@@ -95,10 +95,41 @@ Starts Express + Vite on port 5000.
 npx drizzle-kit push    # Push schema changes
 ```
 
+## CLI Commands
+
+### Collection Management
+```bash
+# Validate all collection manifests
+npx tsx script/collection-validate.ts
+
+# Create a new collection
+npx tsx script/collection-create.ts -- --id <collection-id> --tags <tag1,tag2>
+```
+
+### Skill Management
+```bash
+# Validate all agent skills
+npx tsx script/skill-validate.ts
+
+# Create a new skill
+npx tsx script/skill-create.ts -- --name <skill-name>
+```
+
+### Build (generates README.md)
+```bash
+npm run build
+```
+
 ## User Preferences
 - None set yet
 
 ## Recent Changes
+- Jan 10, 2026: Added CLI tooling for collections and skills
+  - Created Zod schemas for collection and skill manifests (shared/cli-schemas.ts)
+  - Added collection:validate and collection:create scripts
+  - Added skill:validate and skill:create scripts
+  - Updated build.ts to generate README.md
+  - Added example collection and skill manifests
 - Jan 10, 2026: Simplified to v1 focused MVP
   - Removed GRC modules (authorizations, security controls)
   - Added Jira integration

@@ -1,0 +1,27 @@
+{
+  "name": "example-skill",
+  "displayName": "Example Skill",
+  "description": "An example skill demonstrating the manifest structure",
+  "version": "1.0.0",
+  "category": "utility",
+  "inputs": [
+    {
+      "name": "input",
+      "type": "string",
+      "required": true,
+      "description": "The input value"
+    }
+  ],
+  "outputs": [
+    {
+      "name": "output",
+      "type": "string",
+      "description": "The output value"
+    }
+  ],
+  "metadata": {
+    "author": "System"
+  },
+  "createdAt": "2025-01-10T00:00:00.000Z",
+  "updatedAt": "2025-01-10T00:00:00.000Z"
+}
