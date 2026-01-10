@@ -13,14 +13,11 @@ import {
 } from "@/components/ui/sidebar";
 import {
   LayoutDashboard,
-  Server,
   Bug,
-  FileCheck,
-  ClipboardList,
-  FileText,
-  Shield,
+  Server,
   Settings,
-  HelpCircle,
+  History,
+  Shield,
 } from "lucide-react";
 
 const mainMenuItems = [
@@ -30,38 +27,23 @@ const mainMenuItems = [
     icon: LayoutDashboard,
   },
   {
-    title: "Assets",
-    url: "/assets",
-    icon: Server,
-  },
-  {
     title: "Vulnerabilities",
     url: "/vulnerabilities",
     icon: Bug,
   },
   {
-    title: "Authorizations",
-    url: "/authorizations",
-    icon: FileCheck,
+    title: "Assets",
+    url: "/assets",
+    icon: Server,
   },
   {
-    title: "Action Log",
-    url: "/actions",
-    icon: ClipboardList,
-  },
-  {
-    title: "Reports",
-    url: "/reports",
-    icon: FileText,
+    title: "Activity",
+    url: "/activity",
+    icon: History,
   },
 ];
 
 const settingsMenuItems = [
-  {
-    title: "Controls",
-    url: "/controls",
-    icon: Shield,
-  },
   {
     title: "Settings",
     url: "/settings",
@@ -81,10 +63,10 @@ export function AppSidebar() {
           </div>
           <div className="flex flex-col">
             <span className="font-semibold text-sm text-sidebar-foreground" data-testid="text-app-name">
-              SecureCopilot
+              VulnTracker
             </span>
             <span className="text-xs text-sidebar-foreground/70">
-              Security Platform
+              Vulnerability Management
             </span>
           </div>
         </Link>
@@ -92,7 +74,7 @@ export function AppSidebar() {
       <SidebarContent className="p-3">
         <SidebarGroup>
           <SidebarGroupLabel className="text-sidebar-foreground/60 text-xs uppercase tracking-wide px-2 mb-2">
-            Main
+            Manage
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
@@ -115,7 +97,7 @@ export function AppSidebar() {
         </SidebarGroup>
         <SidebarGroup className="mt-5">
           <SidebarGroupLabel className="text-sidebar-foreground/60 text-xs uppercase tracking-wide px-2 mb-2">
-            Configuration
+            Configure
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
@@ -138,16 +120,9 @@ export function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
       <SidebarFooter className="p-3 border-t border-sidebar-border">
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton asChild>
-              <a href="#" className="flex items-center gap-2" data-testid="link-help">
-                <HelpCircle className="h-4 w-4" />
-                <span>Help & Documentation</span>
-              </a>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
+        <div className="px-2 py-1.5 text-xs text-sidebar-foreground/50">
+          v1.0.0
+        </div>
       </SidebarFooter>
     </Sidebar>
   );

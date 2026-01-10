@@ -4,14 +4,11 @@ import { storage } from "./storage";
 import { logger } from "./logger";
 import { 
   insertAssetSchema, 
-  insertAuthorizationSchema, 
-  insertActionLogSchema,
+  insertVulnerabilitySchema,
   updateVulnerabilitySchema,
-  type AssetType, 
-  type ExposureType, 
-  type AuthModel, 
-  type AttackPhase,
-  type Severity 
+  insertActivityLogSchema,
+  insertJiraConfigSchema,
+  type Severity,
 } from "@shared/schema";
 import { ZodError } from "zod";
 
@@ -34,8 +31,8 @@ export async function registerRoutes(
       logger.storage("Fetching dashboard metrics");
       const metrics = await storage.getDashboardMetrics();
       logger.debug("API", "Dashboard metrics retrieved", { 
-        totalAssets: metrics.totalAssets,
-        openFindings: metrics.openFindings 
+        totalVulnerabilities: metrics.totalVulnerabilities,
+        openVulnerabilities: metrics.openVulnerabilities 
       });
       res.json(metrics);
     } catch (error) {
@@ -47,10 +44,9 @@ export async function registerRoutes(
   // Assets
   app.get("/api/assets", async (req, res) => {
     try {
-      const { type, scope, search, page, pageSize } = req.query;
+      const { type, search, page, pageSize } = req.query;
       const filters = {
         type: type as string,
-        scope: scope as string,
         search: search as string,
       };
       logger.storage("Fetching assets", { filters });
@@ -95,6 +91,14 @@ export async function registerRoutes(
       const validatedData = insertAssetSchema.parse(req.body);
       logger.validation(true, { schema: "insertAssetSchema" });
       const asset = await storage.createAsset(validatedData);
+      
+      await storage.createActivityLog({
+        entityType: "asset",
+        entityId: asset.id,
+        action: "created",
+        details: `Asset "${asset.name}" created`,
+      });
+      
       logger.audit("Asset created", { id: asset.id, name: asset.name, type: asset.type });
       res.status(201).json(asset);
     } catch (error) {
@@ -114,6 +118,14 @@ export async function registerRoutes(
         logger.warn("API", "Asset not found for update", { id: req.params.id });
         return res.status(404).json({ error: "Asset not found" });
       }
+      
+      await storage.createActivityLog({
+        entityType: "asset",
+        entityId: asset.id,
+        action: "updated",
+        details: `Asset "${asset.name}" updated`,
+      });
+      
       logger.audit("Asset updated", { id: asset.id, name: asset.name });
       res.json(asset);
     } catch (error) {
@@ -130,6 +142,14 @@ export async function registerRoutes(
         logger.warn("API", "Asset not found for deletion", { id: req.params.id });
         return res.status(404).json({ error: "Asset not found" });
       }
+      
+      await storage.createActivityLog({
+        entityType: "asset",
+        entityId: req.params.id,
+        action: "deleted",
+        details: "Asset deleted",
+      });
+      
       logger.audit("Asset deleted", { id: req.params.id });
       res.status(204).send();
     } catch (error) {
@@ -141,12 +161,14 @@ export async function registerRoutes(
   // Vulnerabilities
   app.get("/api/vulnerabilities", async (req, res) => {
     try {
-      const { severity, status, search, page, pageSize, limit } = req.query;
+      const { severity, status, search, page, pageSize, limit, hasJira, assignee } = req.query;
       const filters = {
         severity: severity as string,
         status: status as string,
         search: search as string,
         limit: limit ? parseInt(limit as string) : undefined,
+        hasJira: hasJira === "true" ? true : hasJira === "false" ? false : undefined,
+        assignee: assignee as string,
       };
       logger.storage("Fetching vulnerabilities", { filters });
       const vulns = await storage.getVulnerabilities(filters);
@@ -183,6 +205,31 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/vulnerabilities", async (req, res) => {
+    try {
+      logger.debug("API", "Creating vulnerability", { title: req.body.title });
+      const validatedData = insertVulnerabilitySchema.parse(req.body);
+      logger.validation(true, { schema: "insertVulnerabilitySchema" });
+      const vuln = await storage.createVulnerability(validatedData);
+      
+      await storage.createActivityLog({
+        entityType: "vulnerability",
+        entityId: vuln.id,
+        action: "created",
+        details: `Vulnerability "${vuln.title}" created`,
+      });
+      
+      logger.audit("Vulnerability created", { id: vuln.id, title: vuln.title });
+      res.status(201).json(vuln);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return handleZodError(res, error);
+      }
+      logger.error("API", "Error creating vulnerability", { error });
+      res.status(500).json({ error: "Failed to create vulnerability" });
+    }
+  });
+
   app.patch("/api/vulnerabilities/:id", async (req, res) => {
     try {
       logger.debug("API", "Updating vulnerability", { id: req.params.id, updates: req.body });
@@ -193,6 +240,15 @@ export async function registerRoutes(
         logger.warn("API", "Vulnerability not found for update", { id: req.params.id });
         return res.status(404).json({ error: "Vulnerability not found" });
       }
+      
+      const changes = Object.keys(validatedData).join(", ");
+      await storage.createActivityLog({
+        entityType: "vulnerability",
+        entityId: vuln.id,
+        action: "updated",
+        details: `Updated: ${changes}`,
+      });
+      
       logger.audit("Vulnerability updated", { id: vuln.id, status: vuln.status });
       res.json(vuln);
     } catch (error) {
@@ -201,6 +257,36 @@ export async function registerRoutes(
       }
       logger.error("API", "Error updating vulnerability", { id: req.params.id, error });
       res.status(500).json({ error: "Failed to update vulnerability" });
+    }
+  });
+
+  // Bulk update vulnerabilities
+  app.post("/api/vulnerabilities/bulk-update", async (req, res) => {
+    try {
+      const { ids, updates } = req.body;
+      
+      if (!Array.isArray(ids) || ids.length === 0) {
+        return res.status(400).json({ error: "IDs must be a non-empty array" });
+      }
+      
+      const validatedData = updateVulnerabilitySchema.parse(updates);
+      const count = await storage.bulkUpdateVulnerabilities(ids, validatedData);
+      
+      await storage.createActivityLog({
+        entityType: "vulnerability",
+        entityId: ids.join(","),
+        action: "bulk_updated",
+        details: `Bulk updated ${count} vulnerabilities`,
+      });
+      
+      logger.audit("Bulk vulnerability update", { count, updates: Object.keys(validatedData) });
+      res.json({ updated: count });
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return handleZodError(res, error);
+      }
+      logger.error("API", "Error bulk updating vulnerabilities", { error });
+      res.status(500).json({ error: "Failed to bulk update vulnerabilities" });
     }
   });
 
@@ -216,37 +302,28 @@ export async function registerRoutes(
 
       logger.info("API", "Starting vulnerability import", { recordCount: data.length });
       
-      const vulns = data.map((row) => {
-        const techStack = row.tech_stack ? row.tech_stack.split(",").map((s: string) => s.trim()) : [];
-        const recommendedActions = row.recommended_actions ? row.recommended_actions.split("|").map((s: string) => s.trim()) : [];
-        
-        return {
-          assetId: row.id || "",
-          assetType: (row.asset_type || "web_application") as AssetType,
-          exposure: (row.exposure || "internal") as ExposureType,
-          authModel: (row.auth_model || "none") as AuthModel,
-          provider: row.provider || "",
-          region: row.region || "",
-          techStack,
-          vulnClass: row.vuln_class || "Unknown",
-          cwe: row.cwe || "CWE-000",
-          severity: (row.severity || "medium") as Severity,
-          confidence: parseFloat(row.confidence) || 0.5,
-          signalSource: row.signal_source || "manual",
-          symptoms: row.symptoms || "",
-          attackPhase: (row.attack_phase || "reconnaissance") as AttackPhase,
-          dataExposure: row.data_exposure || "",
-          privilegeGain: row.privilege_gain || "",
-          blastRadius: row.blast_radius || "",
-          noAuth: row.no_auth === "True",
-          rateLimited: row.rate_limited === "True",
-          recommendedActions,
-          exploitable: row.exploitable === "True",
-          falsePositive: row.false_positive === "True",
-        };
-      });
+      const vulns = data.map((row) => ({
+        title: row.title || row.name || row.vulnerability || "Unknown Vulnerability",
+        description: row.description || row.synopsis || "",
+        cve: row.cve || row.cve_id || "",
+        cwe: row.cwe || row.cwe_id || "",
+        severity: (row.severity?.toLowerCase() || "medium") as Severity,
+        cvssScore: parseFloat(row.cvss_score || row.cvss || "0") || undefined,
+        assetName: row.asset_name || row.host || row.ip || "",
+        source: "csv_import" as const,
+        scannerFindingId: row.plugin_id || row.finding_id || row.id || "",
+        exploitAvailable: row.exploit_available === "true" || row.exploit === "true" || row.exploitable === "true",
+      }));
       
       const count = await storage.importVulnerabilities(vulns);
+      
+      await storage.createActivityLog({
+        entityType: "import",
+        entityId: "csv_import",
+        action: "imported",
+        details: `Imported ${count} vulnerabilities from CSV`,
+      });
+      
       logger.audit("Vulnerabilities imported", { count, totalRecords: data.length });
       res.json({ imported: count });
     } catch (error) {
@@ -255,200 +332,110 @@ export async function registerRoutes(
     }
   });
 
-  // Authorizations
-  app.get("/api/authorizations", async (req, res) => {
+  // Activity Logs
+  app.get("/api/activity", async (req, res) => {
     try {
-      const { status } = req.query;
-      logger.storage("Fetching authorizations", { status });
-      const auths = await storage.getAuthorizations({
-        status: status as string,
-      });
-      logger.debug("API", "Authorizations retrieved", { count: auths.length });
-      res.json(auths);
+      const { entityType, entityId, limit } = req.query;
+      const filters = {
+        entityType: entityType as string,
+        entityId: entityId as string,
+        limit: limit ? parseInt(limit as string) : 50,
+      };
+      logger.storage("Fetching activity logs", { filters });
+      const logs = await storage.getActivityLogs(filters);
+      logger.debug("API", "Activity logs retrieved", { count: logs.length });
+      res.json(logs);
     } catch (error) {
-      logger.error("API", "Error fetching authorizations", { error });
-      res.status(500).json({ error: "Failed to fetch authorizations" });
+      logger.error("API", "Error fetching activity logs", { error });
+      res.status(500).json({ error: "Failed to fetch activity logs" });
     }
   });
 
-  app.get("/api/authorizations/:id", async (req, res) => {
+  // Jira Configuration
+  app.get("/api/jira/config", async (req, res) => {
     try {
-      logger.storage("Fetching authorization by ID", { id: req.params.id });
-      const auth = await storage.getAuthorization(req.params.id);
-      if (!auth) {
-        logger.warn("API", "Authorization not found", { id: req.params.id });
-        return res.status(404).json({ error: "Authorization not found" });
-      }
-      res.json(auth);
+      const config = await storage.getJiraConfig();
+      res.json(config || { isConfigured: false });
     } catch (error) {
-      logger.error("API", "Error fetching authorization", { id: req.params.id, error });
-      res.status(500).json({ error: "Failed to fetch authorization" });
+      logger.error("API", "Error fetching Jira config", { error });
+      res.status(500).json({ error: "Failed to fetch Jira configuration" });
     }
   });
 
-  app.post("/api/authorizations", async (req, res) => {
+  app.post("/api/jira/config", async (req, res) => {
     try {
-      logger.debug("API", "Creating authorization", { title: req.body.title });
-      const validatedData = insertAuthorizationSchema.parse(req.body);
-      logger.validation(true, { schema: "insertAuthorizationSchema" });
-      const auth = await storage.createAuthorization(validatedData);
-      logger.audit("Authorization created", { 
-        id: auth.id, 
-        title: auth.title,
-        scope: auth.scope,
-        startDate: auth.startDate,
-        endDate: auth.endDate 
+      const validatedData = insertJiraConfigSchema.parse(req.body);
+      const config = await storage.saveJiraConfig(validatedData);
+      
+      await storage.createActivityLog({
+        entityType: "jira_config",
+        entityId: config.id,
+        action: "configured",
+        details: `Jira configured for project ${config.projectKey}`,
       });
-      res.status(201).json(auth);
+      
+      logger.audit("Jira config saved", { projectKey: config.projectKey });
+      res.json(config);
     } catch (error) {
       if (error instanceof ZodError) {
         return handleZodError(res, error);
       }
-      logger.error("API", "Error creating authorization", { error });
-      res.status(500).json({ error: "Failed to create authorization" });
+      logger.error("API", "Error saving Jira config", { error });
+      res.status(500).json({ error: "Failed to save Jira configuration" });
     }
   });
 
-  app.patch("/api/authorizations/:id", async (req, res) => {
+  // Create Jira ticket for vulnerability
+  app.post("/api/vulnerabilities/:id/jira", async (req, res) => {
     try {
-      logger.debug("API", "Updating authorization", { id: req.params.id, updates: Object.keys(req.body) });
-      const auth = await storage.updateAuthorization(req.params.id, req.body);
-      if (!auth) {
-        logger.warn("API", "Authorization not found for update", { id: req.params.id });
-        return res.status(404).json({ error: "Authorization not found" });
+      const vuln = await storage.getVulnerability(req.params.id);
+      if (!vuln) {
+        return res.status(404).json({ error: "Vulnerability not found" });
       }
-      logger.audit("Authorization updated", { id: auth.id, title: auth.title });
-      res.json(auth);
-    } catch (error) {
-      logger.error("API", "Error updating authorization", { id: req.params.id, error });
-      res.status(500).json({ error: "Failed to update authorization" });
-    }
-  });
 
-  // Action Logs
-  app.get("/api/actions", async (req, res) => {
-    try {
-      const { risk, approval, limit } = req.query;
-      const filters = { risk: risk as string, approval: approval as string };
-      logger.storage("Fetching actions", { filters });
-      let actions = await storage.getActions(filters);
+      const jiraConfig = await storage.getJiraConfig();
+      if (!jiraConfig?.isConfigured) {
+        return res.status(400).json({ error: "Jira is not configured" });
+      }
+
+      // For now, we simulate Jira ticket creation
+      // In production, this would call the Jira API
+      const jiraKey = `${jiraConfig.projectKey}-${Math.floor(Math.random() * 10000)}`;
+      const jiraUrl = `${jiraConfig.baseUrl}/browse/${jiraKey}`;
       
-      if (limit) {
-        actions = actions.slice(0, parseInt(limit as string));
-      }
-      
-      logger.debug("API", "Actions retrieved", { count: actions.length });
-      res.json(actions);
-    } catch (error) {
-      logger.error("API", "Error fetching actions", { error });
-      res.status(500).json({ error: "Failed to fetch actions" });
-    }
-  });
-
-  app.get("/api/actions/:id", async (req, res) => {
-    try {
-      logger.storage("Fetching action by ID", { id: req.params.id });
-      const action = await storage.getAction(req.params.id);
-      if (!action) {
-        logger.warn("API", "Action not found", { id: req.params.id });
-        return res.status(404).json({ error: "Action not found" });
-      }
-      res.json(action);
-    } catch (error) {
-      logger.error("API", "Error fetching action", { id: req.params.id, error });
-      res.status(500).json({ error: "Failed to fetch action" });
-    }
-  });
-
-  app.post("/api/actions", async (req, res) => {
-    try {
-      logger.debug("API", "Creating action", { actionType: req.body.actionType });
-      const validatedData = insertActionLogSchema.parse(req.body);
-      logger.validation(true, { schema: "insertActionLogSchema" });
-      const action = await storage.createAction(validatedData);
-      logger.audit("Action created", { 
-        id: action.id, 
-        actionType: action.actionType,
-        riskLevel: action.riskLevel 
+      const updated = await storage.updateVulnerability(req.params.id, {
+        jiraKey,
+        jiraStatus: "To Do",
+        jiraUrl,
       });
-      res.status(201).json(action);
-    } catch (error) {
-      if (error instanceof ZodError) {
-        return handleZodError(res, error);
-      }
-      logger.error("API", "Error creating action", { error });
-      res.status(500).json({ error: "Failed to create action" });
-    }
-  });
 
-  app.patch("/api/actions/:id/approve", async (req, res) => {
-    try {
-      const { approved } = req.body;
-      logger.debug("API", "Processing action approval", { id: req.params.id, approved });
-      if (approved) {
-        const action = await storage.approveAction(req.params.id, "Security Admin");
-        if (!action) {
-          logger.warn("API", "Action not found for approval", { id: req.params.id });
-          return res.status(404).json({ error: "Action not found" });
-        }
-        logger.audit("Action approved", { 
-          id: action.id, 
-          actionType: action.actionType,
-          approvedBy: action.approvedBy 
-        });
-        res.json(action);
-      } else {
-        logger.warn("API", "Invalid approval status received", { id: req.params.id, approved });
-        res.status(400).json({ error: "Invalid approval status" });
-      }
-    } catch (error) {
-      logger.error("API", "Error approving action", { id: req.params.id, error });
-      res.status(500).json({ error: "Failed to approve action" });
-    }
-  });
+      await storage.createActivityLog({
+        entityType: "vulnerability",
+        entityId: req.params.id,
+        action: "jira_created",
+        details: `Jira ticket ${jiraKey} created`,
+      });
 
-  // Security Controls
-  app.get("/api/controls", async (req, res) => {
-    try {
-      const { framework, status } = req.query;
-      const filters = { framework: framework as string, status: status as string };
-      logger.storage("Fetching controls", { filters });
-      const controls = await storage.getControls(filters);
-      logger.debug("API", "Controls retrieved", { count: controls.length });
-      res.json(controls);
+      logger.audit("Jira ticket created", { vulnId: req.params.id, jiraKey });
+      res.json({ jiraKey, jiraUrl, vulnerability: updated });
     } catch (error) {
-      logger.error("API", "Error fetching controls", { error });
-      res.status(500).json({ error: "Failed to fetch controls" });
-    }
-  });
-
-  app.get("/api/controls/:id", async (req, res) => {
-    try {
-      logger.storage("Fetching control by ID", { id: req.params.id });
-      const control = await storage.getControl(req.params.id);
-      if (!control) {
-        logger.warn("API", "Control not found", { id: req.params.id });
-        return res.status(404).json({ error: "Control not found" });
-      }
-      res.json(control);
-    } catch (error) {
-      logger.error("API", "Error fetching control", { id: req.params.id, error });
-      res.status(500).json({ error: "Failed to fetch control" });
+      logger.error("API", "Error creating Jira ticket", { error });
+      res.status(500).json({ error: "Failed to create Jira ticket" });
     }
   });
 
   logger.info("ROUTES", "All API routes registered successfully", {
     endpoints: [
+      "GET /api/dashboard/metrics",
       "GET/POST /api/assets",
       "GET/PATCH/DELETE /api/assets/:id",
-      "GET/PATCH /api/vulnerabilities",
+      "GET/POST /api/vulnerabilities",
+      "GET/PATCH /api/vulnerabilities/:id",
       "POST /api/vulnerabilities/import",
-      "GET/POST /api/authorizations",
-      "GET/PATCH /api/authorizations/:id",
-      "GET/POST /api/actions",
-      "PATCH /api/actions/:id/approve",
-      "GET /api/controls",
-      "GET /api/dashboard/metrics"
+      "POST /api/vulnerabilities/bulk-update",
+      "POST /api/vulnerabilities/:id/jira",
+      "GET /api/activity",
+      "GET/POST /api/jira/config",
     ]
   });
 

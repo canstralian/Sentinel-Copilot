@@ -1,75 +1,106 @@
-# SecureCopilot - Security Management Platform
+# VulnTracker v1
+
+A focused vulnerability management tool for small IT teams.
 
 ## Overview
 
-SecureCopilot is an enterprise security management platform that provides unified GRC (Governance, Risk, Compliance), security operations, vulnerability management, and authorized penetration testing workflows. The platform follows design patterns from industry tools like Splunk Enterprise Security, Tenable.io, and ServiceNow GRC modules, prioritizing information density and workflow efficiency.
+VulnTracker v1 provides:
+- **Vulnerability Import**: Import findings from Nessus, Qualys, Rapid7, Tenable via CSV
+- **Smart Prioritization**: Risk scoring based on severity, exploitability, asset criticality, and age
+- **Jira Integration**: Create remediation tickets directly from vulnerabilities
 
-The application is a full-stack TypeScript project with a React frontend and Express backend, using PostgreSQL for data persistence.
+### What's NOT in v1 (by design)
+- GRC/Compliance modules
+- Penetration testing features
+- Security controls management
 
-## User Preferences
+## Architecture
 
-Preferred communication style: Simple, everyday language.
+### Tech Stack
+- **Frontend**: React + TypeScript + Vite + TailwindCSS + shadcn/ui
+- **Backend**: Express.js + TypeScript
+- **Database**: PostgreSQL with Drizzle ORM
+- **State**: TanStack Query (React Query)
 
-## System Architecture
+### Directory Structure
+```
+client/src/
+├── components/     # UI components (shadcn, custom)
+├── pages/          # Route pages (Dashboard, Vulnerabilities, Assets, Settings, Activity)
+├── hooks/          # Custom React hooks
+├── lib/            # Utilities and query client
 
-### Frontend Architecture
-- **Framework**: React 18 with TypeScript
-- **Routing**: Wouter (lightweight React router)
-- **State Management**: TanStack React Query for server state
-- **UI Components**: shadcn/ui component library built on Radix UI primitives
-- **Styling**: Tailwind CSS with custom CSS variables for theming (light/dark mode support)
-- **Forms**: React Hook Form with Zod validation
-- **Build Tool**: Vite
+server/
+├── routes.ts       # API endpoints
+├── storage.ts      # Database operations
+├── seed.ts         # Sample data seeding
+├── db.ts           # Database connection
 
-The frontend follows a page-based architecture with shared components. Key pages include Dashboard, Assets, Vulnerabilities, Authorizations, Actions, Reports, Controls, and Settings. The design uses a multi-panel dashboard layout with a 240px collapsible sidebar and a main content area.
+shared/
+├── schema.ts       # Drizzle schema + types + risk scoring
+```
 
-### Backend Architecture
-- **Framework**: Express.js with TypeScript
-- **HTTP Server**: Node.js HTTP module wrapping Express
-- **API Design**: RESTful JSON API with `/api` prefix
-- **Development**: Vite dev server integration for HMR
+### Database Schema
+- **assets**: IT assets (servers, applications, databases) with criticality
+- **vulnerabilities**: Security findings with risk scores, Jira integration
+- **activityLogs**: Audit trail of all changes
+- **jiraConfig**: Jira integration settings
 
-The backend serves both the API and static frontend assets. In development, Vite middleware handles frontend compilation. In production, pre-built static files are served from the `dist/public` directory.
+### Risk Score Calculation
+Factors in:
+- Base severity (Critical: 40, High: 30, Medium: 20, Low: 10)
+- Exploit availability (+25)
+- Asset criticality multiplier (Critical: 1.5x, High: 1.25x)
+- Age factor (>90 days: +20, >30 days: +10, >7 days: +5)
 
-### Data Layer
-- **ORM**: Drizzle ORM
-- **Database**: PostgreSQL (configured via DATABASE_URL environment variable)
-- **Schema Location**: `shared/schema.ts` - shared between frontend and backend
-- **Validation**: Zod schemas generated from Drizzle schemas using drizzle-zod
+Max score: 100
 
-Key data models include:
-- Users (authentication)
-- Assets (servers, APIs, databases, cloud resources)
-- Vulnerabilities (with severity levels: critical, high, medium, low, info)
-- Authorizations (penetration testing approvals)
-- Action Logs (security operations audit trail)
-- Security Controls (compliance framework mappings)
+## API Endpoints
 
-### Build System
-- **Frontend Build**: Vite produces static assets to `dist/public`
-- **Backend Build**: esbuild bundles server code to `dist/index.cjs`
-- **TypeScript**: Strict mode enabled with path aliases (`@/` for client, `@shared/` for shared code)
+### Dashboard
+- `GET /api/dashboard/metrics` - Aggregated stats
 
-## External Dependencies
+### Assets
+- `GET /api/assets` - List with filters
+- `POST /api/assets` - Create asset
+- `PATCH /api/assets/:id` - Update asset
+- `DELETE /api/assets/:id` - Remove asset
+
+### Vulnerabilities
+- `GET /api/vulnerabilities` - List with filters
+- `POST /api/vulnerabilities` - Create
+- `PATCH /api/vulnerabilities/:id` - Update status/assignee
+- `POST /api/vulnerabilities/import` - CSV import
+- `POST /api/vulnerabilities/bulk-update` - Bulk operations
+- `POST /api/vulnerabilities/:id/jira` - Create Jira ticket
+
+### Activity
+- `GET /api/activity` - Audit log
+
+### Jira
+- `GET /api/jira/config` - Get configuration
+- `POST /api/jira/config` - Save configuration
+
+## Development
+
+### Running
+```bash
+npm run dev
+```
+
+Starts Express + Vite on port 5000.
 
 ### Database
-- PostgreSQL database required (connection via DATABASE_URL environment variable)
-- Drizzle Kit for schema migrations (`npm run db:push`)
+```bash
+npx drizzle-kit push    # Push schema changes
+```
 
-### UI Framework
-- Radix UI primitives for accessible components
-- Tailwind CSS for styling
-- Lucide React for icons
-- Google Fonts: IBM Plex Sans (UI text), Roboto Mono (code/technical output)
+## User Preferences
+- None set yet
 
-### Key Runtime Libraries
-- TanStack React Query for data fetching and caching
-- React Hook Form for form handling
-- date-fns for date manipulation
-- Zod for runtime validation
-- wouter for client-side routing
-
-### Development Tools
-- Vite with React plugin and Replit-specific plugins
-- esbuild for production server bundling
-- TypeScript for type checking
+## Recent Changes
+- Jan 10, 2026: Simplified to v1 focused MVP
+  - Removed GRC modules (authorizations, security controls)
+  - Added Jira integration
+  - Implemented risk scoring algorithm
+  - Renamed from SecureCopilot to VulnTracker

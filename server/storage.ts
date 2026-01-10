@@ -1,24 +1,22 @@
-import { eq, ilike, and, sql, desc, count } from "drizzle-orm";
+import { eq, ilike, and, sql, desc, count, gte, isNull, isNotNull } from "drizzle-orm";
 import { db } from "./db";
 import {
   users,
   assets,
   vulnerabilities,
-  authorizations,
-  actionLogs,
-  securityControls,
+  activityLogs,
+  jiraConfig,
+  calculateRiskScore,
   type User,
   type InsertUser,
   type Asset,
   type InsertAsset,
   type Vulnerability,
   type InsertVulnerability,
-  type Authorization,
-  type InsertAuthorization,
-  type ActionLog,
-  type InsertActionLog,
-  type SecurityControl,
-  type InsertSecurityControl,
+  type ActivityLog,
+  type InsertActivityLog,
+  type JiraConfig,
+  type InsertJiraConfig,
   type DashboardMetrics,
 } from "@shared/schema";
 
@@ -27,31 +25,31 @@ export interface IStorage {
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
 
-  getAssets(filters?: { type?: string; scope?: string; search?: string }): Promise<Asset[]>;
+  getAssets(filters?: { type?: string; search?: string }): Promise<Asset[]>;
   getAsset(id: string): Promise<Asset | undefined>;
   createAsset(asset: InsertAsset): Promise<Asset>;
   updateAsset(id: string, updates: Partial<Asset>): Promise<Asset | undefined>;
   deleteAsset(id: string): Promise<boolean>;
 
-  getVulnerabilities(filters?: { severity?: string; status?: string; search?: string; limit?: number }): Promise<Vulnerability[]>;
+  getVulnerabilities(filters?: { 
+    severity?: string; 
+    status?: string; 
+    search?: string; 
+    limit?: number;
+    hasJira?: boolean;
+    assignee?: string;
+  }): Promise<Vulnerability[]>;
   getVulnerability(id: string): Promise<Vulnerability | undefined>;
   createVulnerability(vuln: InsertVulnerability): Promise<Vulnerability>;
   updateVulnerability(id: string, updates: Partial<Vulnerability>): Promise<Vulnerability | undefined>;
+  bulkUpdateVulnerabilities(ids: string[], updates: Partial<Vulnerability>): Promise<number>;
   importVulnerabilities(vulns: InsertVulnerability[]): Promise<number>;
 
-  getAuthorizations(filters?: { status?: string }): Promise<Authorization[]>;
-  getAuthorization(id: string): Promise<Authorization | undefined>;
-  createAuthorization(auth: InsertAuthorization): Promise<Authorization>;
-  updateAuthorization(id: string, updates: Partial<Authorization>): Promise<Authorization | undefined>;
+  getActivityLogs(filters?: { entityType?: string; entityId?: string; limit?: number }): Promise<ActivityLog[]>;
+  createActivityLog(log: InsertActivityLog): Promise<ActivityLog>;
 
-  getActions(filters?: { risk?: string; approval?: string }): Promise<ActionLog[]>;
-  getAction(id: string): Promise<ActionLog | undefined>;
-  createAction(action: InsertActionLog): Promise<ActionLog>;
-  approveAction(id: string, approvedBy: string): Promise<ActionLog | undefined>;
-
-  getControls(filters?: { framework?: string; status?: string }): Promise<SecurityControl[]>;
-  getControl(id: string): Promise<SecurityControl | undefined>;
-  createControl(control: InsertSecurityControl): Promise<SecurityControl>;
+  getJiraConfig(): Promise<JiraConfig | undefined>;
+  saveJiraConfig(config: InsertJiraConfig): Promise<JiraConfig>;
 
   getDashboardMetrics(): Promise<DashboardMetrics>;
 }
@@ -72,16 +70,11 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
-  async getAssets(filters?: { type?: string; scope?: string; search?: string }): Promise<Asset[]> {
+  async getAssets(filters?: { type?: string; search?: string }): Promise<Asset[]> {
     const conditions = [];
     
     if (filters?.type) {
       conditions.push(eq(assets.type, filters.type));
-    }
-    if (filters?.scope === "in_scope") {
-      conditions.push(eq(assets.inScope, true));
-    } else if (filters?.scope === "out_of_scope") {
-      conditions.push(eq(assets.inScope, false));
     }
     if (filters?.search) {
       conditions.push(ilike(assets.name, `%${filters.search}%`));
@@ -113,7 +106,14 @@ export class DatabaseStorage implements IStorage {
     return result.length > 0;
   }
 
-  async getVulnerabilities(filters?: { severity?: string; status?: string; search?: string; limit?: number }): Promise<Vulnerability[]> {
+  async getVulnerabilities(filters?: { 
+    severity?: string; 
+    status?: string; 
+    search?: string; 
+    limit?: number;
+    hasJira?: boolean;
+    assignee?: string;
+  }): Promise<Vulnerability[]> {
     const conditions = [];
     
     if (filters?.severity) {
@@ -123,7 +123,15 @@ export class DatabaseStorage implements IStorage {
       conditions.push(eq(vulnerabilities.status, filters.status));
     }
     if (filters?.search) {
-      conditions.push(ilike(vulnerabilities.vulnClass, `%${filters.search}%`));
+      conditions.push(ilike(vulnerabilities.title, `%${filters.search}%`));
+    }
+    if (filters?.hasJira === true) {
+      conditions.push(isNotNull(vulnerabilities.jiraKey));
+    } else if (filters?.hasJira === false) {
+      conditions.push(isNull(vulnerabilities.jiraKey));
+    }
+    if (filters?.assignee) {
+      conditions.push(eq(vulnerabilities.assignee, filters.assignee));
     }
 
     let query = db.select().from(vulnerabilities);
@@ -132,7 +140,7 @@ export class DatabaseStorage implements IStorage {
       query = query.where(and(...conditions)) as typeof query;
     }
     
-    query = query.orderBy(desc(vulnerabilities.createdAt)) as typeof query;
+    query = query.orderBy(desc(vulnerabilities.riskScore), desc(vulnerabilities.createdAt)) as typeof query;
     
     if (filters?.limit) {
       query = query.limit(filters.limit) as typeof query;
@@ -147,151 +155,168 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createVulnerability(vuln: InsertVulnerability): Promise<Vulnerability> {
-    const [created] = await db.insert(vulnerabilities).values(vuln).returning();
+    const riskScore = calculateRiskScore({
+      severity: vuln.severity,
+      exploitAvailable: vuln.exploitAvailable || false,
+    });
+    
+    const [created] = await db.insert(vulnerabilities).values({
+      ...vuln,
+      riskScore,
+    }).returning();
     return created;
   }
 
   async updateVulnerability(id: string, updates: Partial<Vulnerability>): Promise<Vulnerability | undefined> {
-    const [updated] = await db.update(vulnerabilities).set(updates).where(eq(vulnerabilities.id, id)).returning();
+    const updateData: Partial<Vulnerability> = {
+      ...updates,
+      updatedAt: new Date(),
+    };
+    
+    if (updates.status === "resolved" && !updates.resolvedAt) {
+      updateData.resolvedAt = new Date();
+    }
+    
+    const [updated] = await db.update(vulnerabilities)
+      .set(updateData)
+      .where(eq(vulnerabilities.id, id))
+      .returning();
     return updated || undefined;
+  }
+
+  async bulkUpdateVulnerabilities(ids: string[], updates: Partial<Vulnerability>): Promise<number> {
+    if (ids.length === 0) return 0;
+    
+    const updateData: Partial<Vulnerability> = {
+      ...updates,
+      updatedAt: new Date(),
+    };
+    
+    if (updates.status === "resolved") {
+      updateData.resolvedAt = new Date();
+    }
+    
+    let count = 0;
+    for (const id of ids) {
+      const result = await db.update(vulnerabilities)
+        .set(updateData)
+        .where(eq(vulnerabilities.id, id))
+        .returning();
+      if (result.length > 0) count++;
+    }
+    return count;
   }
 
   async importVulnerabilities(vulns: InsertVulnerability[]): Promise<number> {
     if (vulns.length === 0) return 0;
-    const result = await db.insert(vulnerabilities).values(vulns).returning();
+    
+    const vulnsWithScore = vulns.map(vuln => ({
+      ...vuln,
+      riskScore: calculateRiskScore({
+        severity: vuln.severity,
+        exploitAvailable: vuln.exploitAvailable || false,
+      }),
+    }));
+    
+    const result = await db.insert(vulnerabilities).values(vulnsWithScore).returning();
     return result.length;
   }
 
-  async getAuthorizations(filters?: { status?: string }): Promise<Authorization[]> {
-    if (filters?.status) {
-      return await db.select().from(authorizations).where(eq(authorizations.status, filters.status));
-    }
-    return await db.select().from(authorizations);
-  }
-
-  async getAuthorization(id: string): Promise<Authorization | undefined> {
-    const [auth] = await db.select().from(authorizations).where(eq(authorizations.id, id));
-    return auth || undefined;
-  }
-
-  async createAuthorization(auth: InsertAuthorization): Promise<Authorization> {
-    const [created] = await db.insert(authorizations).values(auth).returning();
-    return created;
-  }
-
-  async updateAuthorization(id: string, updates: Partial<Authorization>): Promise<Authorization | undefined> {
-    const [updated] = await db.update(authorizations).set(updates).where(eq(authorizations.id, id)).returning();
-    return updated || undefined;
-  }
-
-  async getActions(filters?: { risk?: string; approval?: string }): Promise<ActionLog[]> {
+  async getActivityLogs(filters?: { entityType?: string; entityId?: string; limit?: number }): Promise<ActivityLog[]> {
     const conditions = [];
     
-    if (filters?.risk) {
-      conditions.push(eq(actionLogs.riskLevel, filters.risk));
+    if (filters?.entityType) {
+      conditions.push(eq(activityLogs.entityType, filters.entityType));
     }
-    if (filters?.approval === "pending") {
-      conditions.push(and(eq(actionLogs.requiresApproval, true), eq(actionLogs.approved, false)));
-    } else if (filters?.approval === "approved") {
-      conditions.push(eq(actionLogs.approved, true));
+    if (filters?.entityId) {
+      conditions.push(eq(activityLogs.entityId, filters.entityId));
     }
 
-    if (conditions.length > 0) {
-      return await db.select().from(actionLogs).where(and(...conditions)).orderBy(desc(actionLogs.timestamp));
-    }
-    return await db.select().from(actionLogs).orderBy(desc(actionLogs.timestamp));
-  }
-
-  async getAction(id: string): Promise<ActionLog | undefined> {
-    const [action] = await db.select().from(actionLogs).where(eq(actionLogs.id, id));
-    return action || undefined;
-  }
-
-  async createAction(action: InsertActionLog): Promise<ActionLog> {
-    const [created] = await db.insert(actionLogs).values(action).returning();
-    return created;
-  }
-
-  async approveAction(id: string, approvedBy: string): Promise<ActionLog | undefined> {
-    const [updated] = await db.update(actionLogs).set({
-      approved: true,
-      approvedBy,
-      approvalTimestamp: new Date(),
-    }).where(eq(actionLogs.id, id)).returning();
-    return updated || undefined;
-  }
-
-  async getControls(filters?: { framework?: string; status?: string }): Promise<SecurityControl[]> {
-    const conditions = [];
+    let query = db.select().from(activityLogs);
     
-    if (filters?.framework) {
-      conditions.push(eq(securityControls.framework, filters.framework));
-    }
-    if (filters?.status) {
-      conditions.push(eq(securityControls.status, filters.status));
-    }
-
     if (conditions.length > 0) {
-      return await db.select().from(securityControls).where(and(...conditions));
+      query = query.where(and(...conditions)) as typeof query;
     }
-    return await db.select().from(securityControls);
+    
+    query = query.orderBy(desc(activityLogs.timestamp)) as typeof query;
+    
+    if (filters?.limit) {
+      query = query.limit(filters.limit) as typeof query;
+    }
+
+    return await query;
   }
 
-  async getControl(id: string): Promise<SecurityControl | undefined> {
-    const [control] = await db.select().from(securityControls).where(eq(securityControls.id, id));
-    return control || undefined;
-  }
-
-  async createControl(control: InsertSecurityControl): Promise<SecurityControl> {
-    const [created] = await db.insert(securityControls).values(control).returning();
+  async createActivityLog(log: InsertActivityLog): Promise<ActivityLog> {
+    const [created] = await db.insert(activityLogs).values(log).returning();
     return created;
+  }
+
+  async getJiraConfig(): Promise<JiraConfig | undefined> {
+    const [config] = await db.select().from(jiraConfig).limit(1);
+    return config || undefined;
+  }
+
+  async saveJiraConfig(config: InsertJiraConfig): Promise<JiraConfig> {
+    const existing = await this.getJiraConfig();
+    
+    if (existing) {
+      const [updated] = await db.update(jiraConfig)
+        .set({
+          ...config,
+          isConfigured: true,
+          updatedAt: new Date(),
+        })
+        .where(eq(jiraConfig.id, existing.id))
+        .returning();
+      return updated;
+    } else {
+      const [created] = await db.insert(jiraConfig)
+        .values({
+          ...config,
+          isConfigured: true,
+        })
+        .returning();
+      return created;
+    }
   }
 
   async getDashboardMetrics(): Promise<DashboardMetrics> {
-    const [assetCounts] = await db.select({
-      total: count(),
-      inScope: sql<number>`count(*) filter (where ${assets.inScope} = true)`,
-    }).from(assets);
+    const oneWeekAgo = new Date();
+    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
 
     const [vulnCounts] = await db.select({
       total: count(),
-      critical: sql<number>`count(*) filter (where ${vulnerabilities.severity} = 'critical')`,
-      high: sql<number>`count(*) filter (where ${vulnerabilities.severity} = 'high')`,
-      medium: sql<number>`count(*) filter (where ${vulnerabilities.severity} = 'medium')`,
-      low: sql<number>`count(*) filter (where ${vulnerabilities.severity} = 'low')`,
       open: sql<number>`count(*) filter (where ${vulnerabilities.status} = 'open')`,
-      remediated: sql<number>`count(*) filter (where ${vulnerabilities.status} = 'remediated')`,
+      inProgress: sql<number>`count(*) filter (where ${vulnerabilities.status} = 'in_progress')`,
+      critical: sql<number>`count(*) filter (where ${vulnerabilities.severity} = 'critical' and ${vulnerabilities.status} in ('open', 'in_progress'))`,
+      high: sql<number>`count(*) filter (where ${vulnerabilities.severity} = 'high' and ${vulnerabilities.status} in ('open', 'in_progress'))`,
+      medium: sql<number>`count(*) filter (where ${vulnerabilities.severity} = 'medium' and ${vulnerabilities.status} in ('open', 'in_progress'))`,
+      low: sql<number>`count(*) filter (where ${vulnerabilities.severity} = 'low' and ${vulnerabilities.status} in ('open', 'in_progress'))`,
+      resolvedThisWeek: sql<number>`count(*) filter (where ${vulnerabilities.status} = 'resolved' and ${vulnerabilities.resolvedAt} >= ${oneWeekAgo})`,
+      withJira: sql<number>`count(*) filter (where ${vulnerabilities.jiraKey} is not null)`,
+      overdue: sql<number>`count(*) filter (where ${vulnerabilities.dueDate} < now() and ${vulnerabilities.status} in ('open', 'in_progress'))`,
     }).from(vulnerabilities);
 
-    const [authCounts] = await db.select({
-      active: sql<number>`count(*) filter (where ${authorizations.status} = 'active')`,
-    }).from(authorizations);
-
-    const [actionCounts] = await db.select({
-      pending: sql<number>`count(*) filter (where ${actionLogs.requiresApproval} = true and ${actionLogs.approved} = false)`,
-    }).from(actionLogs);
-
-    const [controlCounts] = await db.select({
+    const [assetCounts] = await db.select({
       total: count(),
-      implemented: sql<number>`count(*) filter (where ${securityControls.status} = 'implemented')`,
-    }).from(securityControls);
+    }).from(assets);
 
-    const totalControls = Number(controlCounts?.total ?? 0);
-    const implementedControls = Number(controlCounts?.implemented ?? 0);
+    const openVulns = Number(vulnCounts?.open ?? 0) + Number(vulnCounts?.inProgress ?? 0);
 
     return {
-      totalAssets: Number(assetCounts?.total ?? 0),
-      inScopeAssets: Number(assetCounts?.inScope ?? 0),
       totalVulnerabilities: Number(vulnCounts?.total ?? 0),
+      openVulnerabilities: openVulns,
       criticalVulns: Number(vulnCounts?.critical ?? 0),
       highVulns: Number(vulnCounts?.high ?? 0),
       mediumVulns: Number(vulnCounts?.medium ?? 0),
       lowVulns: Number(vulnCounts?.low ?? 0),
-      openFindings: Number(vulnCounts?.open ?? 0),
-      remediatedFindings: Number(vulnCounts?.remediated ?? 0),
-      activeAuthorizations: Number(authCounts?.active ?? 0),
-      pendingApprovals: Number(actionCounts?.pending ?? 0),
-      controlsCoverage: totalControls > 0 ? Math.round((implementedControls / totalControls) * 100) : 0,
+      resolvedThisWeek: Number(vulnCounts?.resolvedThisWeek ?? 0),
+      avgTimeToRemediate: 0,
+      vulnsWithJira: Number(vulnCounts?.withJira ?? 0),
+      overdueVulns: Number(vulnCounts?.overdue ?? 0),
+      totalAssets: Number(assetCounts?.total ?? 0),
+      assetsWithVulns: 0,
     };
   }
 }

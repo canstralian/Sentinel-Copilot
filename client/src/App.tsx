@@ -11,10 +11,7 @@ import NotFound from "@/pages/not-found";
 import Dashboard from "@/pages/dashboard";
 import Vulnerabilities from "@/pages/vulnerabilities";
 import Assets from "@/pages/assets";
-import Authorizations from "@/pages/authorizations";
-import Actions from "@/pages/actions";
-import Reports from "@/pages/reports";
-import Controls from "@/pages/controls";
+import Activity from "@/pages/activity";
 import Settings from "@/pages/settings";
 
 function Router() {
@@ -23,10 +20,7 @@ function Router() {
       <Route path="/" component={Dashboard} />
       <Route path="/vulnerabilities" component={Vulnerabilities} />
       <Route path="/assets" component={Assets} />
-      <Route path="/authorizations" component={Authorizations} />
-      <Route path="/actions" component={Actions} />
-      <Route path="/reports" component={Reports} />
-      <Route path="/controls" component={Controls} />
+      <Route path="/activity" component={Activity} />
       <Route path="/settings" component={Settings} />
       <Route component={NotFound} />
     </Switch>
@@ -41,7 +35,7 @@ function App() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider defaultTheme="light" storageKey="secureCopilot-theme">
+      <ThemeProvider defaultTheme="light" storageKey="vulntracker-theme">
         <TooltipProvider>
           <SidebarProvider style={sidebarStyle as React.CSSProperties}>
             <div className="flex h-screen w-full">

@@ -1,37 +1,71 @@
+import { useState } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/page-header";
-import { ThemeToggle } from "@/components/theme-toggle";
 import { useTheme } from "@/components/theme-provider";
 import {
-  Settings as SettingsIcon,
-  Bell,
-  Shield,
-  Database,
-  Key,
-  Globe,
   Moon,
   Sun,
-  Upload,
-  RefreshCw,
+  ExternalLink,
+  CheckCircle,
+  AlertCircle,
 } from "lucide-react";
+import type { JiraConfig } from "@shared/schema";
+import { queryClient, apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Settings() {
   const { theme, setTheme } = useTheme();
+  const { toast } = useToast();
+
+  const { data: jiraConfig, isLoading: jiraLoading } = useQuery<JiraConfig>({
+    queryKey: ["/api/jira/config"],
+  });
+
+  const [jiraForm, setJiraForm] = useState({
+    baseUrl: "",
+    projectKey: "",
+    issueType: "Bug",
+    apiEmail: "",
+  });
+
+  const saveMutation = useMutation({
+    mutationFn: async (data: typeof jiraForm) => {
+      return apiRequest("POST", "/api/jira/config", data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/jira/config"] });
+      toast({
+        title: "Jira configuration saved",
+        description: "Your Jira integration is now configured.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Failed to save",
+        description: "Please check your configuration and try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleSaveJira = () => {
+    saveMutation.mutate(jiraForm);
+  };
 
   return (
     <div className="p-5 space-y-6">
       <PageHeader
         title="Settings"
-        description="Configure your security platform preferences"
+        description="Configure your vulnerability management platform"
       />
 
       <div className="grid gap-6 lg:grid-cols-2">
-        {/* Appearance */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
@@ -39,7 +73,7 @@ export default function Settings() {
               Appearance
             </CardTitle>
             <CardDescription>
-              Customize the look and feel of the platform
+              Customize the look and feel
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -74,232 +108,125 @@ export default function Settings() {
           </CardContent>
         </Card>
 
-        {/* Notifications */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Bell className="h-4 w-4" />
-              Notifications
-            </CardTitle>
-            <CardDescription>
-              Configure how you receive alerts
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <Label className="font-medium">Critical Alerts</Label>
-                <p className="text-sm text-muted-foreground">
-                  Get notified for critical vulnerabilities
-                </p>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <ExternalLink className="h-4 w-4" />
+                  Jira Integration
+                </CardTitle>
+                <CardDescription>
+                  Connect to Jira to create remediation tickets
+                </CardDescription>
               </div>
-              <Switch defaultChecked data-testid="switch-critical-alerts" />
+              {jiraConfig?.isConfigured ? (
+                <Badge variant="secondary" className="flex items-center gap-1">
+                  <CheckCircle className="h-3 w-3" />
+                  Connected
+                </Badge>
+              ) : (
+                <Badge variant="outline" className="flex items-center gap-1">
+                  <AlertCircle className="h-3 w-3" />
+                  Not Configured
+                </Badge>
+              )}
             </div>
-            <Separator />
-            <div className="flex items-center justify-between">
-              <div>
-                <Label className="font-medium">Authorization Expiry</Label>
-                <p className="text-sm text-muted-foreground">
-                  Warn before authorizations expire
-                </p>
-              </div>
-              <Switch defaultChecked data-testid="switch-auth-expiry" />
-            </div>
-            <Separator />
-            <div className="flex items-center justify-between">
-              <div>
-                <Label className="font-medium">Pending Approvals</Label>
-                <p className="text-sm text-muted-foreground">
-                  Alert when actions need approval
-                </p>
-              </div>
-              <Switch defaultChecked data-testid="switch-pending-approvals" />
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Security */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Shield className="h-4 w-4" />
-              Security
-            </CardTitle>
-            <CardDescription>
-              Security and access settings
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <Label className="font-medium">Two-Factor Authentication</Label>
-                <p className="text-sm text-muted-foreground">
-                  Add an extra layer of security
-                </p>
-              </div>
-              <Switch data-testid="switch-2fa" />
-            </div>
-            <Separator />
-            <div className="flex items-center justify-between">
-              <div>
-                <Label className="font-medium">Session Timeout</Label>
-                <p className="text-sm text-muted-foreground">
-                  Auto-logout after inactivity
-                </p>
-              </div>
-              <Switch defaultChecked data-testid="switch-session-timeout" />
-            </div>
-            <Separator />
-            <div className="flex items-center justify-between">
-              <div>
-                <Label className="font-medium">Audit Logging</Label>
-                <p className="text-sm text-muted-foreground">
-                  Log all user actions
-                </p>
-              </div>
-              <Switch defaultChecked data-testid="switch-audit-logging" />
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Data Management */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Database className="h-4 w-4" />
-              Data Management
-            </CardTitle>
-            <CardDescription>
-              Import and export your security data
-            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <Label className="font-medium">Import Vulnerabilities</Label>
-              <p className="text-sm text-muted-foreground mb-3">
-                Upload CSV files with vulnerability data
-              </p>
-              <Button variant="outline" size="sm" data-testid="button-import-data">
-                <Upload className="h-4 w-4 mr-2" />
-                Import CSV
-              </Button>
+              <Label htmlFor="jira-url">Jira Base URL</Label>
+              <Input
+                id="jira-url"
+                placeholder="https://your-company.atlassian.net"
+                value={jiraForm.baseUrl || jiraConfig?.baseUrl || ""}
+                onChange={(e) => setJiraForm({ ...jiraForm, baseUrl: e.target.value })}
+                className="mt-1"
+                data-testid="input-jira-url"
+              />
             </div>
-            <Separator />
-            <div>
-              <Label className="font-medium">Sync Integrations</Label>
-              <p className="text-sm text-muted-foreground mb-3">
-                Refresh data from connected tools
-              </p>
-              <Button variant="outline" size="sm" data-testid="button-sync-data">
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Sync Now
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* API Keys */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Key className="h-4 w-4" />
-              API Keys
-            </CardTitle>
-            <CardDescription>
-              Manage API access for integrations
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <Label className="font-medium">API Key</Label>
-              <div className="flex gap-2 mt-2">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="jira-project">Project Key</Label>
                 <Input
-                  type="password"
-                  value="••••••••••••••••••••"
-                  readOnly
-                  className="font-mono text-sm"
-                  data-testid="input-api-key"
+                  id="jira-project"
+                  placeholder="SEC"
+                  value={jiraForm.projectKey || jiraConfig?.projectKey || ""}
+                  onChange={(e) => setJiraForm({ ...jiraForm, projectKey: e.target.value })}
+                  className="mt-1"
+                  data-testid="input-jira-project"
                 />
-                <Button variant="outline" size="sm" data-testid="button-regenerate-key">
-                  Regenerate
-                </Button>
               </div>
+              <div>
+                <Label htmlFor="jira-issue-type">Issue Type</Label>
+                <Input
+                  id="jira-issue-type"
+                  placeholder="Bug"
+                  value={jiraForm.issueType || jiraConfig?.issueType || "Bug"}
+                  onChange={(e) => setJiraForm({ ...jiraForm, issueType: e.target.value })}
+                  className="mt-1"
+                  data-testid="input-jira-issue-type"
+                />
+              </div>
+            </div>
+            <div>
+              <Label htmlFor="jira-email">API Email (optional)</Label>
+              <Input
+                id="jira-email"
+                type="email"
+                placeholder="your-email@company.com"
+                value={jiraForm.apiEmail || jiraConfig?.apiEmail || ""}
+                onChange={(e) => setJiraForm({ ...jiraForm, apiEmail: e.target.value })}
+                className="mt-1"
+                data-testid="input-jira-email"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Used for Jira API authentication. Store your API token securely.
+              </p>
             </div>
             <Separator />
-            <div>
-              <Label className="font-medium">Webhook URL</Label>
-              <div className="flex gap-2 mt-2">
-                <Input
-                  placeholder="https://your-webhook.example.com/security"
-                  className="text-sm"
-                  data-testid="input-webhook-url"
-                />
-                <Button variant="outline" size="sm" data-testid="button-save-webhook">
-                  Save
-                </Button>
-              </div>
-            </div>
+            <Button 
+              onClick={handleSaveJira} 
+              disabled={saveMutation.isPending || !jiraForm.baseUrl || !jiraForm.projectKey}
+              data-testid="button-save-jira"
+            >
+              {saveMutation.isPending ? "Saving..." : "Save Configuration"}
+            </Button>
           </CardContent>
         </Card>
 
-        {/* Integrations */}
-        <Card>
+        <Card className="lg:col-span-2">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Globe className="h-4 w-4" />
-              Integrations
-            </CardTitle>
+            <CardTitle className="text-base">Import Sources</CardTitle>
             <CardDescription>
-              Connect with external security tools
+              VulnTracker supports importing vulnerabilities from various scanner formats
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <IntegrationItem
-              name="SIEM Integration"
-              description="Send alerts to your SIEM"
-              connected={false}
-            />
-            <Separator />
-            <IntegrationItem
-              name="Ticketing System"
-              description="Auto-create tickets for findings"
-              connected={true}
-            />
-            <Separator />
-            <IntegrationItem
-              name="Vulnerability Scanner"
-              description="Import scan results automatically"
-              connected={true}
-            />
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="p-4 border rounded-md">
+                <div className="font-medium">Nessus</div>
+                <p className="text-xs text-muted-foreground mt-1">CSV export supported</p>
+              </div>
+              <div className="p-4 border rounded-md">
+                <div className="font-medium">Qualys</div>
+                <p className="text-xs text-muted-foreground mt-1">CSV export supported</p>
+              </div>
+              <div className="p-4 border rounded-md">
+                <div className="font-medium">Rapid7</div>
+                <p className="text-xs text-muted-foreground mt-1">CSV export supported</p>
+              </div>
+              <div className="p-4 border rounded-md">
+                <div className="font-medium">Tenable</div>
+                <p className="text-xs text-muted-foreground mt-1">CSV export supported</p>
+              </div>
+            </div>
+            <p className="text-sm text-muted-foreground mt-4">
+              Export your scan results as CSV and use the Import feature on the Vulnerabilities page.
+            </p>
           </CardContent>
         </Card>
       </div>
-    </div>
-  );
-}
-
-function IntegrationItem({
-  name,
-  description,
-  connected,
-}: {
-  name: string;
-  description: string;
-  connected: boolean;
-}) {
-  return (
-    <div className="flex items-center justify-between">
-      <div>
-        <Label className="font-medium">{name}</Label>
-        <p className="text-sm text-muted-foreground">{description}</p>
-      </div>
-      <Button
-        variant={connected ? "outline" : "default"}
-        size="sm"
-        data-testid={`button-integration-${name.toLowerCase().replace(/\s+/g, '-')}`}
-      >
-        {connected ? "Configure" : "Connect"}
-      </Button>
     </div>
   );
 }

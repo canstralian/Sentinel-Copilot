@@ -1,11 +1,9 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -29,39 +27,40 @@ import {
   Plus,
   Server,
   Globe,
-  Lock,
-  Cloud,
   Database,
+  Network,
+  Cloud,
+  Monitor,
   Box,
-  Key,
-  GitBranch,
-  MessageSquare,
-  Shield,
-  CheckCircle,
-  XCircle,
+  HelpCircle,
 } from "lucide-react";
-import type { Asset, AssetType, ExposureType, AuthModel } from "@shared/schema";
+import type { Asset, AssetType, AssetCriticality } from "@shared/schema";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 
-const assetTypeIcons: Record<AssetType, React.ReactNode> = {
-  web_application: <Globe className="h-4 w-4" />,
-  api: <Server className="h-4 w-4" />,
-  cloud_storage: <Cloud className="h-4 w-4" />,
+const assetTypeIcons: Record<string, React.ReactNode> = {
+  server: <Server className="h-4 w-4" />,
+  application: <Globe className="h-4 w-4" />,
   database: <Database className="h-4 w-4" />,
-  kubernetes_cluster: <Box className="h-4 w-4" />,
+  network: <Network className="h-4 w-4" />,
+  cloud: <Cloud className="h-4 w-4" />,
+  endpoint: <Monitor className="h-4 w-4" />,
   container: <Box className="h-4 w-4" />,
-  iam_role: <Key className="h-4 w-4" />,
-  ci_cd_pipeline: <GitBranch className="h-4 w-4" />,
-  message_queue: <MessageSquare className="h-4 w-4" />,
+  other: <HelpCircle className="h-4 w-4" />,
+};
+
+const criticalityColors: Record<string, string> = {
+  critical: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400",
+  high: "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400",
+  medium: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
+  low: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400",
 };
 
 export default function Assets() {
   const [searchQuery, setSearchQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("all");
-  const [scopeFilter, setScopeFilter] = useState<string>("all");
   const [createOpen, setCreateOpen] = useState(false);
   const [page, setPage] = useState(1);
   const pageSize = 20;
@@ -72,7 +71,6 @@ export default function Assets() {
     pageSize: String(pageSize),
     ...(searchQuery && { search: searchQuery }),
     ...(typeFilter !== "all" && { type: typeFilter }),
-    ...(scopeFilter !== "all" && { scope: scopeFilter }),
   });
 
   const { data, isLoading } = useQuery<{ assets: Asset[]; total: number }>({
@@ -91,6 +89,7 @@ export default function Assets() {
         String(query.queryKey[0]).startsWith("/api/dashboard")
       });
       setCreateOpen(false);
+      form.reset();
       toast({
         title: "Asset created",
         description: "The asset has been added successfully.",
@@ -101,23 +100,18 @@ export default function Assets() {
   const form = useForm({
     defaultValues: {
       name: "",
-      type: "web_application" as AssetType,
-      exposure: "internal" as ExposureType,
-      authModel: "none" as AuthModel,
-      provider: "",
-      region: "",
-      techStack: "",
-      inScope: true,
-      authorized: false,
+      type: "server" as AssetType,
+      criticality: "medium" as AssetCriticality,
+      environment: "production",
+      owner: "",
+      ipAddress: "",
+      hostname: "",
     },
   });
 
-  const onSubmit = (values: typeof form.getValues) => {
+  const onSubmit = () => {
     const data = form.getValues();
-    createMutation.mutate({
-      ...data,
-      techStack: data.techStack.split(",").map((s) => s.trim()).filter(Boolean),
-    });
+    createMutation.mutate(data);
   };
 
   const columns = [
@@ -127,95 +121,46 @@ export default function Assets() {
       render: (item: Asset) => (
         <div className="flex items-center gap-2">
           <div className="p-1.5 rounded-md bg-muted">
-            {assetTypeIcons[item.type]}
+            {assetTypeIcons[item.type] || assetTypeIcons.other}
           </div>
           <div>
             <div className="font-medium">{item.name}</div>
             <div className="text-xs text-muted-foreground capitalize">
-              {item.type.replace(/_/g, " ")}
+              {item.type}
             </div>
           </div>
         </div>
       ),
     },
     {
-      key: "exposure",
-      header: "Exposure",
+      key: "criticality",
+      header: "Criticality",
       render: (item: Asset) => (
-        <Badge variant="outline" className="capitalize">
-          {item.exposure === "internet_facing" && <Globe className="h-3 w-3 mr-1" />}
-          {item.exposure === "internal" && <Lock className="h-3 w-3 mr-1" />}
-          {item.exposure.replace(/_/g, " ")}
+        <Badge className={`capitalize ${criticalityColors[item.criticality] || criticalityColors.medium}`}>
+          {item.criticality}
         </Badge>
       ),
     },
     {
-      key: "authModel",
-      header: "Auth Model",
-      className: "text-sm capitalize",
-      render: (item: Asset) => item.authModel.replace(/_/g, " "),
-    },
-    {
-      key: "provider",
-      header: "Provider",
-      className: "text-sm",
-      render: (item: Asset) => item.provider || "—",
-    },
-    {
-      key: "region",
-      header: "Region",
-      className: "text-sm font-mono",
-      render: (item: Asset) => item.region || "—",
-    },
-    {
-      key: "techStack",
-      header: "Tech Stack",
+      key: "environment",
+      header: "Environment",
       render: (item: Asset) => (
-        <div className="flex flex-wrap gap-1 max-w-48">
-          {item.techStack.slice(0, 3).map((tech) => (
-            <Badge key={tech} variant="secondary" className="text-xs font-mono">
-              {tech}
-            </Badge>
-          ))}
-          {item.techStack.length > 3 && (
-            <Badge variant="secondary" className="text-xs">
-              +{item.techStack.length - 3}
-            </Badge>
-          )}
-        </div>
+        <Badge variant="outline" className="capitalize">
+          {item.environment}
+        </Badge>
       ),
     },
     {
-      key: "inScope",
-      header: "In Scope",
-      render: (item: Asset) =>
-        item.inScope ? (
-          <div className="flex items-center gap-1 text-severity-low">
-            <CheckCircle className="h-4 w-4" />
-            <span className="text-xs">Yes</span>
-          </div>
-        ) : (
-          <div className="flex items-center gap-1 text-muted-foreground">
-            <XCircle className="h-4 w-4" />
-            <span className="text-xs">No</span>
-          </div>
-        ),
+      key: "owner",
+      header: "Owner",
+      className: "text-sm",
+      render: (item: Asset) => item.owner || "—",
     },
     {
-      key: "authorized",
-      header: "Authorized",
-      render: (item: Asset) =>
-        item.authorized ? (
-          <div className="flex items-center gap-1 text-severity-low">
-            <Shield className="h-4 w-4" />
-            <span className="text-xs">Yes</span>
-          </div>
-        ) : (
-          <div className="flex items-center gap-1 text-severity-medium">
-            <Shield className="h-4 w-4" />
-            <span className="text-xs">Pending</span>
-          </div>
-        ),
+      key: "hostname",
+      header: "Hostname / IP",
+      className: "text-sm font-mono",
+      render: (item: Asset) => item.hostname || item.ipAddress || "—",
     },
   ];
 
@@ -223,7 +168,7 @@ export default function Assets() {
     <div className="p-5 space-y-6">
       <PageHeader
         title="Assets"
-        description="Manage your security assets and scope boundaries"
+        description="Manage your IT assets and their criticality"
         actions={
           <Dialog open={createOpen} onOpenChange={setCreateOpen}>
             <DialogTrigger asChild>
@@ -236,7 +181,7 @@ export default function Assets() {
               <DialogHeader>
                 <DialogTitle>Add New Asset</DialogTitle>
                 <DialogDescription>
-                  Add a new asset to your security inventory
+                  Add a new asset to track vulnerabilities against
                 </DialogDescription>
               </DialogHeader>
               <Form {...form}>
@@ -248,7 +193,7 @@ export default function Assets() {
                       <FormItem>
                         <FormLabel>Asset Name</FormLabel>
                         <FormControl>
-                          <Input placeholder="e.g., Production API" {...field} data-testid="input-asset-name" />
+                          <Input placeholder="e.g., Web Server - Production" {...field} data-testid="input-asset-name" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -268,15 +213,14 @@ export default function Assets() {
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              <SelectItem value="web_application">Web Application</SelectItem>
-                              <SelectItem value="api">API</SelectItem>
-                              <SelectItem value="cloud_storage">Cloud Storage</SelectItem>
+                              <SelectItem value="server">Server</SelectItem>
+                              <SelectItem value="application">Application</SelectItem>
                               <SelectItem value="database">Database</SelectItem>
-                              <SelectItem value="kubernetes_cluster">Kubernetes Cluster</SelectItem>
+                              <SelectItem value="network">Network</SelectItem>
+                              <SelectItem value="cloud">Cloud</SelectItem>
+                              <SelectItem value="endpoint">Endpoint</SelectItem>
                               <SelectItem value="container">Container</SelectItem>
-                              <SelectItem value="iam_role">IAM Role</SelectItem>
-                              <SelectItem value="ci_cd_pipeline">CI/CD Pipeline</SelectItem>
-                              <SelectItem value="message_queue">Message Queue</SelectItem>
+                              <SelectItem value="other">Other</SelectItem>
                             </SelectContent>
                           </Select>
                           <FormMessage />
@@ -285,20 +229,21 @@ export default function Assets() {
                     />
                     <FormField
                       control={form.control}
-                      name="exposure"
+                      name="criticality"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Exposure</FormLabel>
+                          <FormLabel>Criticality</FormLabel>
                           <Select onValueChange={field.onChange} defaultValue={field.value}>
                             <FormControl>
-                              <SelectTrigger data-testid="select-exposure">
+                              <SelectTrigger data-testid="select-criticality">
                                 <SelectValue />
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              <SelectItem value="internet_facing">Internet Facing</SelectItem>
-                              <SelectItem value="internal">Internal</SelectItem>
-                              <SelectItem value="partner_exposed">Partner Exposed</SelectItem>
+                              <SelectItem value="critical">Critical</SelectItem>
+                              <SelectItem value="high">High</SelectItem>
+                              <SelectItem value="medium">Medium</SelectItem>
+                              <SelectItem value="low">Low</SelectItem>
                             </SelectContent>
                           </Select>
                           <FormMessage />
@@ -308,25 +253,36 @@ export default function Assets() {
                   </div>
                   <FormField
                     control={form.control}
-                    name="authModel"
+                    name="environment"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Auth Model</FormLabel>
+                        <FormLabel>Environment</FormLabel>
                         <Select onValueChange={field.onChange} defaultValue={field.value}>
                           <FormControl>
-                            <SelectTrigger data-testid="select-auth-model">
+                            <SelectTrigger data-testid="select-environment">
                               <SelectValue />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="none">None</SelectItem>
-                            <SelectItem value="basic_auth">Basic Auth</SelectItem>
-                            <SelectItem value="oauth2">OAuth 2.0</SelectItem>
-                            <SelectItem value="jwt">JWT</SelectItem>
-                            <SelectItem value="session_cookie">Session Cookie</SelectItem>
-                            <SelectItem value="sso_saml">SSO/SAML</SelectItem>
+                            <SelectItem value="production">Production</SelectItem>
+                            <SelectItem value="staging">Staging</SelectItem>
+                            <SelectItem value="development">Development</SelectItem>
+                            <SelectItem value="testing">Testing</SelectItem>
                           </SelectContent>
                         </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="owner"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Owner (optional)</FormLabel>
+                        <FormControl>
+                          <Input placeholder="e.g., DevOps Team" {...field} data-testid="input-owner" />
+                        </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -334,12 +290,12 @@ export default function Assets() {
                   <div className="grid grid-cols-2 gap-4">
                     <FormField
                       control={form.control}
-                      name="provider"
+                      name="hostname"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Provider</FormLabel>
+                          <FormLabel>Hostname (optional)</FormLabel>
                           <FormControl>
-                            <Input placeholder="e.g., aws_like" {...field} data-testid="input-provider" />
+                            <Input placeholder="e.g., web-prod-01" {...field} data-testid="input-hostname" />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -347,61 +303,14 @@ export default function Assets() {
                     />
                     <FormField
                       control={form.control}
-                      name="region"
+                      name="ipAddress"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Region</FormLabel>
+                          <FormLabel>IP Address (optional)</FormLabel>
                           <FormControl>
-                            <Input placeholder="e.g., us-east" {...field} data-testid="input-region" />
+                            <Input placeholder="e.g., 10.0.1.100" {...field} data-testid="input-ip" />
                           </FormControl>
                           <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                  <FormField
-                    control={form.control}
-                    name="techStack"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Tech Stack (comma separated)</FormLabel>
-                        <FormControl>
-                          <Input placeholder="e.g., nodejs, postgresql, redis" {...field} data-testid="input-tech-stack" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <div className="flex gap-6">
-                    <FormField
-                      control={form.control}
-                      name="inScope"
-                      render={({ field }) => (
-                        <FormItem className="flex items-center gap-2">
-                          <FormControl>
-                            <Checkbox
-                              checked={field.value}
-                              onCheckedChange={field.onChange}
-                              data-testid="checkbox-in-scope"
-                            />
-                          </FormControl>
-                          <FormLabel className="!mt-0">In Scope</FormLabel>
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="authorized"
-                      render={({ field }) => (
-                        <FormItem className="flex items-center gap-2">
-                          <FormControl>
-                            <Checkbox
-                              checked={field.value}
-                              onCheckedChange={field.onChange}
-                              data-testid="checkbox-authorized"
-                            />
-                          </FormControl>
-                          <FormLabel className="!mt-0">Authorized for Testing</FormLabel>
                         </FormItem>
                       )}
                     />
@@ -425,7 +334,6 @@ export default function Assets() {
         }
       />
 
-      {/* Filters */}
       <Card>
         <CardContent className="p-4">
           <div className="flex flex-col sm:flex-row gap-4">
@@ -439,40 +347,26 @@ export default function Assets() {
                 data-testid="input-search-assets"
               />
             </div>
-            <div className="flex gap-2 flex-wrap">
-              <Select value={typeFilter} onValueChange={setTypeFilter}>
-                <SelectTrigger className="w-40" data-testid="select-type-filter">
-                  <SelectValue placeholder="Asset Type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Types</SelectItem>
-                  <SelectItem value="web_application">Web Application</SelectItem>
-                  <SelectItem value="api">API</SelectItem>
-                  <SelectItem value="cloud_storage">Cloud Storage</SelectItem>
-                  <SelectItem value="database">Database</SelectItem>
-                  <SelectItem value="kubernetes_cluster">Kubernetes</SelectItem>
-                  <SelectItem value="container">Container</SelectItem>
-                  <SelectItem value="iam_role">IAM Role</SelectItem>
-                  <SelectItem value="ci_cd_pipeline">CI/CD Pipeline</SelectItem>
-                  <SelectItem value="message_queue">Message Queue</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select value={scopeFilter} onValueChange={setScopeFilter}>
-                <SelectTrigger className="w-32" data-testid="select-scope-filter">
-                  <SelectValue placeholder="Scope" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All</SelectItem>
-                  <SelectItem value="in_scope">In Scope</SelectItem>
-                  <SelectItem value="out_of_scope">Out of Scope</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            <Select value={typeFilter} onValueChange={setTypeFilter}>
+              <SelectTrigger className="w-40" data-testid="select-type-filter">
+                <SelectValue placeholder="Asset Type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Types</SelectItem>
+                <SelectItem value="server">Server</SelectItem>
+                <SelectItem value="application">Application</SelectItem>
+                <SelectItem value="database">Database</SelectItem>
+                <SelectItem value="network">Network</SelectItem>
+                <SelectItem value="cloud">Cloud</SelectItem>
+                <SelectItem value="endpoint">Endpoint</SelectItem>
+                <SelectItem value="container">Container</SelectItem>
+                <SelectItem value="other">Other</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </CardContent>
       </Card>
 
-      {/* Data Table */}
       <DataTable
         data={data?.assets || []}
         columns={columns}

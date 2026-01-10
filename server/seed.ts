@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { assets, vulnerabilities, authorizations, actionLogs, securityControls } from "@shared/schema";
+import { assets, vulnerabilities, activityLogs } from "@shared/schema";
 import { count } from "drizzle-orm";
 
 export async function seedDatabase() {
@@ -13,83 +13,175 @@ export async function seedDatabase() {
   console.log("Seeding database with sample data...");
 
   const sampleAssets = [
-    { name: "Customer Portal", type: "web_application", exposure: "internet_facing", authModel: "oauth2", provider: "AWS", region: "us-east-1", techStack: ["React", "Node.js", "PostgreSQL"], inScope: true, authorized: true },
-    { name: "Payment API", type: "api", exposure: "internet_facing", authModel: "jwt", provider: "AWS", region: "us-east-1", techStack: ["Express", "MongoDB"], inScope: true, authorized: true },
-    { name: "Admin Dashboard", type: "web_application", exposure: "internal", authModel: "sso_saml", provider: "Azure", region: "eastus", techStack: ["Vue.js", "Python", "MySQL"], inScope: true, authorized: true },
-    { name: "User Data Bucket", type: "cloud_storage", exposure: "internal", authModel: "none", provider: "AWS", region: "us-west-2", techStack: ["S3"], inScope: true, authorized: false },
-    { name: "Analytics Database", type: "database", exposure: "internal", authModel: "basic_auth", provider: "GCP", region: "us-central1", techStack: ["BigQuery"], inScope: true, authorized: true },
-    { name: "Production K8s Cluster", type: "kubernetes_cluster", exposure: "partner_exposed", authModel: "jwt", provider: "AWS", region: "us-east-1", techStack: ["EKS", "Istio"], inScope: true, authorized: true },
-    { name: "CI/CD Pipeline", type: "ci_cd_pipeline", exposure: "internal", authModel: "oauth2", provider: "GitHub", region: "global", techStack: ["GitHub Actions", "Docker"], inScope: true, authorized: true },
-    { name: "Notification Service", type: "message_queue", exposure: "internal", authModel: "basic_auth", provider: "AWS", region: "us-east-1", techStack: ["SQS", "SNS"], inScope: false, authorized: false },
-    { name: "Identity Service", type: "api", exposure: "internet_facing", authModel: "oauth2", provider: "Azure", region: "westeurope", techStack: ["C#", ".NET Core", "SQL Server"], inScope: true, authorized: true },
-    { name: "Logging Container", type: "container", exposure: "internal", authModel: "none", provider: "AWS", region: "us-east-1", techStack: ["Elasticsearch", "Kibana"], inScope: true, authorized: true },
-    { name: "Service Account Role", type: "iam_role", exposure: "internal", authModel: "none", provider: "AWS", region: "global", techStack: ["IAM"], inScope: true, authorized: true },
-    { name: "Mobile App Backend", type: "api", exposure: "internet_facing", authModel: "jwt", provider: "GCP", region: "us-west1", techStack: ["Go", "Cloud Run", "Firestore"], inScope: true, authorized: true },
+    { name: "Web Server - Production", type: "server", criticality: "critical", environment: "production", owner: "DevOps Team", ipAddress: "10.0.1.100", hostname: "web-prod-01" },
+    { name: "Database Server - MySQL", type: "database", criticality: "critical", environment: "production", owner: "DBA Team", ipAddress: "10.0.1.101", hostname: "db-prod-01" },
+    { name: "Customer Portal", type: "application", criticality: "high", environment: "production", owner: "Engineering", hostname: "portal.example.com" },
+    { name: "API Gateway", type: "network", criticality: "high", environment: "production", owner: "Platform Team", ipAddress: "10.0.1.10", hostname: "api-gw-01" },
+    { name: "AWS S3 Storage", type: "cloud", criticality: "medium", environment: "production", owner: "Cloud Team" },
+    { name: "Developer Workstations", type: "endpoint", criticality: "medium", environment: "development", owner: "IT Support" },
+    { name: "Kubernetes Cluster", type: "container", criticality: "high", environment: "production", owner: "Platform Team", hostname: "k8s-prod.internal" },
+    { name: "Staging Server", type: "server", criticality: "low", environment: "staging", owner: "QA Team", ipAddress: "10.0.2.100", hostname: "staging-01" },
   ];
 
   const createdAssets = await db.insert(assets).values(sampleAssets).returning();
   console.log(`Created ${createdAssets.length} assets`);
 
   const sampleVulns = [
-    { assetId: createdAssets[0].id, assetType: "web_application", exposure: "internet_facing", authModel: "oauth2", provider: "AWS", region: "us-east-1", techStack: ["React", "Node.js", "PostgreSQL"], vulnClass: "SQL Injection", cwe: "CWE-89", severity: "critical", confidence: 95, signalSource: "Manual Testing", symptoms: "User input directly concatenated in SQL query without parameterization", attackPhase: "exploitation", dataExposure: "Full database access including PII", privilegeGain: "Database admin", blastRadius: "All customer records", noAuth: false, rateLimited: false, recommendedActions: ["Use parameterized queries", "Implement input validation", "Apply WAF rules"], exploitable: true, falsePositive: false },
-    { assetId: createdAssets[1].id, assetType: "api", exposure: "internet_facing", authModel: "jwt", provider: "AWS", region: "us-east-1", techStack: ["Express", "MongoDB"], vulnClass: "Broken Authentication", cwe: "CWE-287", severity: "critical", confidence: 90, signalSource: "Automated Scan", symptoms: "JWT tokens not properly validated, allowing token forgery", attackPhase: "exploitation", dataExposure: "Payment card data", privilegeGain: "Any user account", blastRadius: "All API endpoints", noAuth: false, rateLimited: true, recommendedActions: ["Implement proper JWT validation", "Use strong signing keys", "Add token expiration"], exploitable: true, falsePositive: false },
-    { assetId: createdAssets[2].id, assetType: "web_application", exposure: "internal", authModel: "sso_saml", provider: "Azure", region: "eastus", techStack: ["Vue.js", "Python", "MySQL"], vulnClass: "Cross-Site Scripting (XSS)", cwe: "CWE-79", severity: "high", confidence: 85, signalSource: "Manual Testing", symptoms: "Reflected XSS in search parameter", attackPhase: "exploitation", dataExposure: "Session cookies, CSRF tokens", privilegeGain: "Session hijacking", blastRadius: "Admin users", noAuth: false, rateLimited: false, recommendedActions: ["Encode output", "Implement CSP headers", "Use HttpOnly cookies"], exploitable: true, falsePositive: false },
-    { assetId: createdAssets[3].id, assetType: "cloud_storage", exposure: "internal", authModel: "none", provider: "AWS", region: "us-west-2", techStack: ["S3"], vulnClass: "Insecure Cloud Configuration", cwe: "CWE-284", severity: "high", confidence: 100, signalSource: "Cloud Security Scan", symptoms: "S3 bucket publicly accessible without authentication", attackPhase: "reconnaissance", dataExposure: "User documents and profile images", privilegeGain: "Read access to all bucket contents", blastRadius: "All stored user data", noAuth: true, rateLimited: false, recommendedActions: ["Enable bucket policy restrictions", "Block public access", "Enable access logging"], exploitable: true, falsePositive: false },
-    { assetId: createdAssets[5].id, assetType: "kubernetes_cluster", exposure: "partner_exposed", authModel: "jwt", provider: "AWS", region: "us-east-1", techStack: ["EKS", "Istio"], vulnClass: "Container Escape", cwe: "CWE-250", severity: "critical", confidence: 75, signalSource: "Penetration Test", symptoms: "Privileged container with host path mounts", attackPhase: "post_exploitation", dataExposure: "Host system files", privilegeGain: "Root on host node", blastRadius: "Entire cluster", noAuth: false, rateLimited: false, recommendedActions: ["Remove privileged flag", "Use read-only root filesystem", "Implement pod security policies"], exploitable: true, falsePositive: false },
-    { assetId: createdAssets[6].id, assetType: "ci_cd_pipeline", exposure: "internal", authModel: "oauth2", provider: "GitHub", region: "global", techStack: ["GitHub Actions", "Docker"], vulnClass: "Secrets Exposure", cwe: "CWE-798", severity: "high", confidence: 100, signalSource: "Code Review", symptoms: "API keys hardcoded in workflow files", attackPhase: "reconnaissance", dataExposure: "AWS credentials, API tokens", privilegeGain: "Deploy access", blastRadius: "Production environment", noAuth: false, rateLimited: false, recommendedActions: ["Use GitHub secrets", "Rotate exposed credentials", "Implement secret scanning"], exploitable: true, falsePositive: false },
-    { assetId: createdAssets[8].id, assetType: "api", exposure: "internet_facing", authModel: "oauth2", provider: "Azure", region: "westeurope", techStack: ["C#", ".NET Core", "SQL Server"], vulnClass: "Broken Access Control", cwe: "CWE-639", severity: "high", confidence: 90, signalSource: "Manual Testing", symptoms: "IDOR vulnerability allowing access to other users data", attackPhase: "exploitation", dataExposure: "User PII and preferences", privilegeGain: "Access to any user account", blastRadius: "All registered users", noAuth: false, rateLimited: true, recommendedActions: ["Implement proper authorization checks", "Use indirect object references", "Add audit logging"], exploitable: true, falsePositive: false },
-    { assetId: createdAssets[9].id, assetType: "container", exposure: "internal", authModel: "none", provider: "AWS", region: "us-east-1", techStack: ["Elasticsearch", "Kibana"], vulnClass: "Missing Authentication", cwe: "CWE-306", severity: "medium", confidence: 100, signalSource: "Infrastructure Scan", symptoms: "Kibana dashboard accessible without authentication", attackPhase: "reconnaissance", dataExposure: "Application logs with user data", privilegeGain: "Read access to logs", blastRadius: "Log data exposure", noAuth: true, rateLimited: false, recommendedActions: ["Enable authentication", "Restrict network access", "Mask sensitive log data"], exploitable: true, falsePositive: false },
-    { assetId: createdAssets[10].id, assetType: "iam_role", exposure: "internal", authModel: "none", provider: "AWS", region: "global", techStack: ["IAM"], vulnClass: "Excessive Permissions", cwe: "CWE-250", severity: "medium", confidence: 85, signalSource: "Cloud Security Scan", symptoms: "Service account has Administrator access policy attached", attackPhase: "post_exploitation", dataExposure: "Full AWS account access", privilegeGain: "AWS Administrator", blastRadius: "Entire AWS account", noAuth: false, rateLimited: false, recommendedActions: ["Apply least privilege principle", "Use resource-based policies", "Enable access analyzer"], exploitable: true, falsePositive: false },
-    { assetId: createdAssets[11].id, assetType: "api", exposure: "internet_facing", authModel: "jwt", provider: "GCP", region: "us-west1", techStack: ["Go", "Cloud Run", "Firestore"], vulnClass: "Server-Side Request Forgery", cwe: "CWE-918", severity: "high", confidence: 80, signalSource: "Bug Bounty", symptoms: "URL parameter not validated allowing internal network requests", attackPhase: "exploitation", dataExposure: "Internal services metadata", privilegeGain: "Access to internal APIs", blastRadius: "Internal network", noAuth: false, rateLimited: true, recommendedActions: ["Validate and sanitize URLs", "Use allowlists", "Block internal IP ranges"], exploitable: true, falsePositive: false },
-    { assetId: createdAssets[0].id, assetType: "web_application", exposure: "internet_facing", authModel: "oauth2", provider: "AWS", region: "us-east-1", techStack: ["React", "Node.js", "PostgreSQL"], vulnClass: "Cross-Site Request Forgery", cwe: "CWE-352", severity: "medium", confidence: 85, signalSource: "Automated Scan", symptoms: "State-changing requests lack CSRF tokens", attackPhase: "exploitation", dataExposure: "Account modifications", privilegeGain: "Perform actions as victim", blastRadius: "All authenticated users", noAuth: false, rateLimited: false, recommendedActions: ["Implement CSRF tokens", "Use SameSite cookies", "Validate Origin header"], exploitable: true, falsePositive: false },
-    { assetId: createdAssets[4].id, assetType: "database", exposure: "internal", authModel: "basic_auth", provider: "GCP", region: "us-central1", techStack: ["BigQuery"], vulnClass: "Weak Credentials", cwe: "CWE-521", severity: "low", confidence: 100, signalSource: "Credential Audit", symptoms: "Database using default credentials", attackPhase: "exploitation", dataExposure: "Analytics data", privilegeGain: "Database read access", blastRadius: "Analytics dataset", noAuth: false, rateLimited: false, recommendedActions: ["Change default credentials", "Implement password policy", "Enable MFA"], exploitable: true, falsePositive: false },
-    { assetId: createdAssets[1].id, assetType: "api", exposure: "internet_facing", authModel: "jwt", provider: "AWS", region: "us-east-1", techStack: ["Express", "MongoDB"], vulnClass: "Information Disclosure", cwe: "CWE-200", severity: "low", confidence: 95, signalSource: "Manual Testing", symptoms: "Verbose error messages expose stack traces", attackPhase: "reconnaissance", dataExposure: "Internal paths and versions", privilegeGain: "None", blastRadius: "Information leakage", noAuth: true, rateLimited: false, recommendedActions: ["Implement custom error pages", "Log errors server-side only", "Remove debug mode"], exploitable: false, falsePositive: false },
-    { assetId: createdAssets[2].id, assetType: "web_application", exposure: "internal", authModel: "sso_saml", provider: "Azure", region: "eastus", techStack: ["Vue.js", "Python", "MySQL"], vulnClass: "Security Misconfiguration", cwe: "CWE-16", severity: "info", confidence: 100, signalSource: "Configuration Review", symptoms: "Missing security headers (X-Frame-Options, X-Content-Type-Options)", attackPhase: "reconnaissance", dataExposure: "None directly", privilegeGain: "None", blastRadius: "Clickjacking potential", noAuth: false, rateLimited: false, recommendedActions: ["Add security headers", "Implement helmet middleware", "Configure CSP"], exploitable: false, falsePositive: false },
+    { 
+      title: "Apache Log4j Remote Code Execution (Log4Shell)", 
+      description: "Critical remote code execution vulnerability in Apache Log4j library allowing unauthenticated attackers to execute arbitrary code.", 
+      cve: "CVE-2021-44228", 
+      cwe: "CWE-502", 
+      severity: "critical", 
+      cvssScore: 10.0,
+      assetId: createdAssets[0].id,
+      assetName: "Web Server - Production",
+      source: "nessus",
+      exploitAvailable: true,
+      status: "open",
+      riskScore: 95,
+    },
+    { 
+      title: "SQL Injection in User Authentication", 
+      description: "SQL injection vulnerability in login form allows attackers to bypass authentication and access sensitive data.", 
+      cve: null, 
+      cwe: "CWE-89", 
+      severity: "critical", 
+      cvssScore: 9.8,
+      assetId: createdAssets[2].id,
+      assetName: "Customer Portal",
+      source: "manual",
+      exploitAvailable: true,
+      status: "in_progress",
+      assignee: "John Smith",
+      riskScore: 90,
+    },
+    { 
+      title: "OpenSSL Heartbleed Vulnerability", 
+      description: "Memory disclosure vulnerability in OpenSSL allows reading sensitive server memory.", 
+      cve: "CVE-2014-0160", 
+      cwe: "CWE-126", 
+      severity: "high", 
+      cvssScore: 7.5,
+      assetId: createdAssets[0].id,
+      assetName: "Web Server - Production",
+      source: "qualys",
+      exploitAvailable: true,
+      status: "open",
+      riskScore: 75,
+    },
+    { 
+      title: "MySQL Default Credentials", 
+      description: "Database server using default administrator credentials.", 
+      cve: null, 
+      cwe: "CWE-798", 
+      severity: "high", 
+      cvssScore: 8.1,
+      assetId: createdAssets[1].id,
+      assetName: "Database Server - MySQL",
+      source: "tenable",
+      exploitAvailable: true,
+      status: "open",
+      riskScore: 80,
+    },
+    { 
+      title: "Cross-Site Scripting (XSS) in Search", 
+      description: "Reflected XSS vulnerability in search functionality allows script injection.", 
+      cve: null, 
+      cwe: "CWE-79", 
+      severity: "medium", 
+      cvssScore: 6.1,
+      assetId: createdAssets[2].id,
+      assetName: "Customer Portal",
+      source: "manual",
+      exploitAvailable: false,
+      status: "open",
+      riskScore: 45,
+    },
+    { 
+      title: "S3 Bucket Public Access Enabled", 
+      description: "AWS S3 bucket is configured with public read access exposing sensitive data.", 
+      cve: null, 
+      cwe: "CWE-284", 
+      severity: "high", 
+      cvssScore: 7.5,
+      assetId: createdAssets[4].id,
+      assetName: "AWS S3 Storage",
+      source: "crowdstrike",
+      exploitAvailable: true,
+      status: "resolved",
+      riskScore: 0,
+    },
+    { 
+      title: "Kubernetes API Server Misconfiguration", 
+      description: "Kubernetes API server allows unauthenticated access to sensitive endpoints.", 
+      cve: null, 
+      cwe: "CWE-306", 
+      severity: "high", 
+      cvssScore: 8.2,
+      assetId: createdAssets[6].id,
+      assetName: "Kubernetes Cluster",
+      source: "manual",
+      exploitAvailable: false,
+      status: "open",
+      riskScore: 65,
+    },
+    { 
+      title: "Outdated TLS Version", 
+      description: "Server supports TLS 1.0 which has known vulnerabilities.", 
+      cve: null, 
+      cwe: "CWE-327", 
+      severity: "medium", 
+      cvssScore: 5.3,
+      assetId: createdAssets[3].id,
+      assetName: "API Gateway",
+      source: "nessus",
+      exploitAvailable: false,
+      status: "open",
+      riskScore: 35,
+    },
+    { 
+      title: "Missing Security Headers", 
+      description: "Web server missing critical security headers (HSTS, X-Frame-Options, CSP).", 
+      cve: null, 
+      cwe: "CWE-693", 
+      severity: "low", 
+      cvssScore: 3.7,
+      assetId: createdAssets[2].id,
+      assetName: "Customer Portal",
+      source: "qualys",
+      exploitAvailable: false,
+      status: "accepted",
+      riskScore: 15,
+    },
+    { 
+      title: "Information Disclosure via Error Messages", 
+      description: "Application reveals sensitive internal information in error messages.", 
+      cve: null, 
+      cwe: "CWE-209", 
+      severity: "low", 
+      cvssScore: 4.3,
+      assetId: createdAssets[2].id,
+      assetName: "Customer Portal",
+      source: "manual",
+      exploitAvailable: false,
+      status: "open",
+      riskScore: 20,
+    },
   ];
 
   await db.insert(vulnerabilities).values(sampleVulns);
   console.log(`Created ${sampleVulns.length} vulnerabilities`);
 
-  const now = new Date();
-  const sampleAuths = [
-    { title: "Q1 2026 Penetration Test", scope: "All internet-facing web applications and APIs in production environment", startDate: now.toISOString(), endDate: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString(), authorizedBy: "John Smith, CISO", status: "active", targetAssets: ["Customer Portal", "Payment API", "Identity Service"], restrictions: ["No denial of service testing", "No production database modifications", "Testing only during business hours"], documentUrl: "https://example.com/auth-doc.pdf" },
-    { title: "Cloud Infrastructure Security Assessment", scope: "AWS and Azure cloud resources including storage, compute, and networking", startDate: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString(), endDate: new Date(now.getTime() + 21 * 24 * 60 * 60 * 1000).toISOString(), authorizedBy: "Sarah Chen, VP Engineering", status: "active", targetAssets: ["User Data Bucket", "Production K8s Cluster", "Service Account Role"], restrictions: ["No data exfiltration beyond proof of concept", "No modifications to IAM policies", "Coordinate with DevOps team before testing"], documentUrl: "https://example.com/cloud-auth.pdf" },
-    { title: "Mobile Backend API Testing", scope: "Mobile application backend services and APIs", startDate: new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000).toISOString(), endDate: new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000).toISOString(), authorizedBy: "Michael Torres, CTO", status: "active", targetAssets: ["Mobile App Backend"], restrictions: ["No testing against production user accounts", "Rate limiting must be respected", "Report critical findings within 4 hours"] },
-    { title: "Internal Network Vulnerability Scan", scope: "Internal network infrastructure and services", startDate: new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000).toISOString(), endDate: new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString(), authorizedBy: "John Smith, CISO", status: "expired", targetAssets: ["Admin Dashboard", "Analytics Database", "Logging Container"], restrictions: ["Scanning only during maintenance windows", "No active exploitation without approval"] },
+  const sampleActivity = [
+    { entityType: "vulnerability", entityId: sampleVulns[0].title, action: "created", details: "Vulnerability imported from Nessus scan" },
+    { entityType: "vulnerability", entityId: sampleVulns[1].title, action: "updated", details: "Status changed to in_progress, assigned to John Smith" },
+    { entityType: "asset", entityId: createdAssets[0].id, action: "created", details: "Asset Web Server - Production created" },
+    { entityType: "import", entityId: "nessus_scan_001", action: "imported", details: "Imported 10 vulnerabilities from Nessus scan" },
   ];
 
-  await db.insert(authorizations).values(sampleAuths);
-  console.log(`Created ${sampleAuths.length} authorizations`);
-
-  const sampleActions = [
-    { action: "Nmap Port Scan", command: "nmap -sV -sC 192.168.1.0/24", intent: "Identify open ports and running services on target network", riskLevel: "low", targetAsset: "192.168.1.0/24", requiresApproval: false, rollbackProcedure: "N/A - passive scan" },
-    { action: "SQL Injection Test", command: "sqlmap -u 'https://target.com/api?id=1' --batch", intent: "Test for SQL injection vulnerabilities in API endpoint", riskLevel: "medium", targetAsset: "Customer Portal", requiresApproval: true, rollbackProcedure: "Stop scan immediately if data modification detected" },
-    { action: "Privilege Escalation Check", command: "sudo -l && id && whoami", intent: "Verify current user privileges and check for misconfigured sudo permissions", riskLevel: "high", targetAsset: "app-server-01", requiresApproval: true, rollbackProcedure: "Disconnect session immediately if unauthorized access gained" },
-    { action: "S3 Bucket Permission Audit", command: "aws s3api get-bucket-acl --bucket user-data-bucket", intent: "Check for misconfigured bucket permissions and public access", riskLevel: "low", targetAsset: "User Data Bucket", requiresApproval: false, rollbackProcedure: "N/A - read-only operation" },
-    { action: "JWT Token Forgery Test", command: "python3 jwt_attack.py --target https://api.example.com", intent: "Test JWT implementation for common vulnerabilities", riskLevel: "high", targetAsset: "Payment API", requiresApproval: true, rollbackProcedure: "Invalidate all active sessions if compromise detected" },
-    { action: "Container Security Scan", command: "trivy image production-app:latest", intent: "Scan container images for known vulnerabilities", riskLevel: "low", targetAsset: "Logging Container", requiresApproval: false, rollbackProcedure: "N/A - read-only operation" },
-  ];
-
-  await db.insert(actionLogs).values(sampleActions);
-  console.log(`Created ${sampleActions.length} action logs`);
-
-  const sampleControls = [
-    { framework: "NIST", controlId: "AC-2", title: "Account Management", description: "Manage system accounts, group memberships, privileges, and associated access authorizations.", category: "Access Control", status: "implemented", linkedVulnerabilities: [] },
-    { framework: "NIST", controlId: "AC-3", title: "Access Enforcement", description: "Enforce approved authorizations for logical access to information and system resources.", category: "Access Control", status: "implemented", linkedVulnerabilities: [] },
-    { framework: "NIST", controlId: "AC-7", title: "Unsuccessful Logon Attempts", description: "Enforce a limit of consecutive invalid logon attempts by a user.", category: "Access Control", status: "partial", linkedVulnerabilities: [] },
-    { framework: "NIST", controlId: "AU-2", title: "Audit Events", description: "Identify events that require auditing and maintain a list of auditable events.", category: "Audit and Accountability", status: "implemented", linkedVulnerabilities: [] },
-    { framework: "NIST", controlId: "AU-3", title: "Content of Audit Records", description: "Ensure audit records contain required content including event type, date/time, and success/failure.", category: "Audit and Accountability", status: "implemented", linkedVulnerabilities: [] },
-    { framework: "ISO27001", controlId: "A.9.1.1", title: "Access Control Policy", description: "An access control policy shall be established, documented and reviewed based on business and information security requirements.", category: "Access Control", status: "implemented", linkedVulnerabilities: [] },
-    { framework: "ISO27001", controlId: "A.9.2.1", title: "User Registration and De-registration", description: "A formal user registration and de-registration process shall be implemented to enable assignment of access rights.", category: "Access Control", status: "implemented", linkedVulnerabilities: [] },
-    { framework: "ISO27001", controlId: "A.12.4.1", title: "Event Logging", description: "Event logs recording user activities, exceptions, faults and information security events shall be produced, kept and regularly reviewed.", category: "Operations Security", status: "partial", linkedVulnerabilities: [] },
-    { framework: "CIS", controlId: "CIS-1", title: "Inventory and Control of Enterprise Assets", description: "Actively manage all enterprise assets connected to the infrastructure.", category: "Asset Management", status: "implemented", linkedVulnerabilities: [] },
-    { framework: "CIS", controlId: "CIS-2", title: "Inventory and Control of Software Assets", description: "Actively manage all software on the network so that only authorized software is installed and can execute.", category: "Asset Management", status: "partial", linkedVulnerabilities: [] },
-    { framework: "CIS", controlId: "CIS-3", title: "Data Protection", description: "Develop processes and technical controls to identify, classify, securely handle, retain, and dispose of data.", category: "Data Protection", status: "implemented", linkedVulnerabilities: [] },
-    { framework: "CIS", controlId: "CIS-4", title: "Secure Configuration", description: "Establish and maintain secure configuration of enterprise assets and software.", category: "Configuration Management", status: "partial", linkedVulnerabilities: [] },
-  ];
-
-  await db.insert(securityControls).values(sampleControls);
-  console.log(`Created ${sampleControls.length} security controls`);
+  await db.insert(activityLogs).values(sampleActivity);
+  console.log(`Created ${sampleActivity.length} activity logs`);
 
   console.log("Database seeding completed!");
 }
