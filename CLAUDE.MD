@@ -30,7 +30,7 @@ This document provides context and guidance for AI assistants working on the Sec
 ## Project Structure
 
 ```
-/home/user/Sentinel-Copilot/
+Sentinel-Copilot/
 ├── client/                     # React frontend application
 │   ├── src/
 │   │   ├── components/        # Reusable UI components
@@ -205,15 +205,16 @@ const { data, isLoading } = useQuery({
 // Validate input, log request, handle errors
 app.post("/api/resource", async (req, res, next) => {
   try {
-    logger.http("POST /api/resource", { body: req.body });
+    const startTime = Date.now();
 
-    // Validate with Zod
-    const validated = insertSchema.parse(req.body);
+    // Validate with Zod (use resource-specific schema, e.g., insertAssetSchema)
+    const validated = insertResourceSchema.parse(req.body);
 
     // Business logic
     const result = await storage.create(validated);
 
-    logger.info("Resource created", { id: result.id });
+    logger.http("POST", "/api/resource", 201, Date.now() - startTime);
+    logger.audit("Resource created", { id: result.id });
     res.status(201).json(result);
   } catch (error) {
     next(error);
@@ -230,18 +231,27 @@ The platform uses a comprehensive logging system in `server/logger.ts`.
 - **INFO**: General operational messages
 - **WARN**: Warning conditions
 - **ERROR**: Error conditions
-- **HTTP**: HTTP request/response logging
-- **STARTUP**: Server initialization events
-- **PERFORMANCE**: Performance metrics
+
+In addition to these core log levels, the logger provides **helper methods** that
+internally use the standard levels with specific source labels (typically logging at
+`INFO` level with a structured `source` field):
+- `logger.http()` for HTTP request/response logging
+- `logger.startup()` for server initialization events
+- `logger.performance()` for performance metrics
+- `logger.audit()` for audit trail events
+
+These helpers do not introduce new log levels; they are semantic wrappers around the
+existing DEBUG/INFO/WARN/ERROR levels to make logs easier to categorize and search.
 
 ### Usage
 ```typescript
 import { logger } from './logger';
 
-logger.info("Operation completed", { userId: "123" });
-logger.error("Failed to process", { error: err.message });
-logger.http("GET /api/assets", { statusCode: 200, duration: 45 });
+logger.info("authService", "Operation completed", { userId: "123" });
+logger.error("authService", "Failed to process", { error: err.message });
+logger.http("GET", "/api/assets", 200, 45);
 logger.performance("Database query", queryDuration);
+logger.audit("User logged in", { userId: "123" });
 ```
 
 ## Collections and Skills System
@@ -321,17 +331,55 @@ Skills are extensible modules providing specific capabilities:
 
 ## Testing Philosophy
 
-- Type safety via TypeScript as primary correctness mechanism
-- Manual testing in development mode
-- `npm run check` validates all TypeScript before deployment
-- Integration testing via live dev server
+The project emphasizes type safety and manual testing while supporting automated testing strategies:
+
+### Primary Testing Approach
+- **Type safety via TypeScript** as primary correctness mechanism
+- **Manual testing** in development mode with live dev server
+- **Type checking**: `npm run check` validates all TypeScript before deployment
+- **Integration testing** via live dev server
+
+### Automated Testing Strategies
+While the current project primarily relies on type safety and manual testing, here are recommended approaches for adding automated tests:
+
+#### Unit Testing
+- **Framework**: Vitest (fast, Vite-native test runner)
+- **Coverage**: Utility functions, business logic, data transformations
+- **Command**: `npm run test:unit` (when implemented)
+
+#### Component Testing
+- **Framework**: React Testing Library with Vitest
+- **Coverage**: UI components, user interactions, rendering logic
+- **Focus**: Test component behavior, not implementation details
+- **Command**: `npm run test:components` (when implemented)
+
+#### Backend API Testing
+- **Framework**: Supertest with Vitest
+- **Coverage**: API endpoints, validation, error handling
+- **Focus**: Request/response contracts, status codes, data validation
+- **Command**: `npm run test:api` (when implemented)
+
+#### End-to-End Testing
+- **Framework**: Playwright or Cypress
+- **Coverage**: Critical user workflows, multi-step processes
+- **Focus**: Dashboard loading, asset creation, vulnerability tracking flows
+- **Command**: `npm run test:e2e` (when implemented)
+
+#### Running Tests
+```bash
+npm run test              # Run all tests
+npm run test:watch        # Run tests in watch mode
+npm run test:coverage     # Generate coverage report
+```
+
+**Note**: Test infrastructure can be added incrementally as the project matures. Start with the most critical paths and expand coverage over time.
 
 ## Git Workflow
 
 This project uses feature branches with the naming convention `claude/<description>-<session-id>`.
 
 ### Current Branch
-Working on: `claude/update-claude-md-ue1zX`
+Working on: `claude/<description>-<session-id>`
 
 ### Common Commands
 ```bash
