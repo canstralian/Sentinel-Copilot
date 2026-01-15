@@ -208,7 +208,7 @@ app.post("/api/resource", async (req, res, next) => {
     const startTime = Date.now();
 
     // Validate with Zod (use resource-specific schema, e.g., insertAssetSchema)
-    const validated = insertResourceSchema.parse(req.body);
+    const validated = insertAssetSchema.parse(req.body);
 
     // Business logic
     const result = await storage.create(validated);
