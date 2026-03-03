@@ -1,0 +1,21 @@
+version: 2
+updates:
+  # npm (package.json + package-lock.json at /)
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+
+    # Optional: reduce PR noise by grouping updates
+    groups:
+      production-dependencies:
+        dependency-type: "production"
+      development-dependencies:
+        dependency-type: "development"
+
+  # Optional: if/when you add workflows under .github/workflows/
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
