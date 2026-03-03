@@ -21,6 +21,7 @@
 - [Data Models](#data-models)
 - [Logging](#logging)
 - [Contributing](#contributing)
+- [Copilot + Codex Guide (Trading Bot Swarm)](docs/copilot-codex-trading-bot-swarm-guide.md)
 - [Security](#security)
 - [License](#license)
 
