@@ -199,6 +199,46 @@ export const vulnerabilityImportSchema = z.object({
 
 export type VulnerabilityImportRow = z.infer<typeof vulnerabilityImportSchema>;
 
+// ---------------------------------------------------------------------------
+// KQL Self-Correction Agent schemas (Phase 2)
+// ---------------------------------------------------------------------------
+
+export const kqlValidateSchema = z.object({
+  query: z.string().min(1, "Query is required"),
+  workspaceId: z.string().min(1, "Workspace ID is required"),
+  accessToken: z.string().min(1, "Access token is required"),
+});
+
+export const kqlCorrectSchema = z.object({
+  query: z.string().min(1, "Query is required"),
+  errorMessage: z.string().min(1, "Error message is required"),
+  workspaceId: z.string().min(1, "Workspace ID is required"),
+  accessToken: z.string().min(1, "Access token is required"),
+  /** If omitted, only deterministic MAGIC rules are applied */
+  llmEndpoint: z.string().url().optional(),
+  llmApiKey: z.string().optional(),
+});
+
+export const kqlDeploySchema = z.object({
+  query: z.string().min(1, "Query is required"),
+  ruleName: z.string().min(1, "Rule name is required"),
+  workspaceId: z.string().min(1, "Workspace ID is required"),
+  accessToken: z.string().min(1, "Access token is required"),
+  subscriptionId: z.string().min(1, "Subscription ID is required"),
+  resourceGroup: z.string().min(1, "Resource group is required"),
+  workspaceName: z.string().min(1, "Workspace name is required"),
+  displayName: z.string().optional(),
+  description: z.string().optional(),
+  severity: z.enum(["High", "Medium", "Low", "Informational"]).optional(),
+  queryFrequency: z.string().optional(),
+  queryPeriod: z.string().optional(),
+  triggerThreshold: z.number().int().min(0).optional(),
+});
+
+export type KqlValidateInput = z.infer<typeof kqlValidateSchema>;
+export type KqlCorrectInput = z.infer<typeof kqlCorrectSchema>;
+export type KqlDeployInput = z.infer<typeof kqlDeploySchema>;
+
 // Helper function to calculate risk score
 export function calculateRiskScore(vuln: {
   severity: string;

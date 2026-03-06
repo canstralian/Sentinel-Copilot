@@ -2,12 +2,16 @@ import type { Express, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { logger } from "./logger";
-import { 
-  insertAssetSchema, 
+import { KQLJediSentinel } from "./kql-agent";
+import {
+  insertAssetSchema,
   insertVulnerabilitySchema,
   updateVulnerabilitySchema,
   insertActivityLogSchema,
   insertJiraConfigSchema,
+  kqlValidateSchema,
+  kqlCorrectSchema,
+  kqlDeploySchema,
   type Severity,
 } from "@shared/schema";
 import { ZodError, z } from "zod";
@@ -425,6 +429,161 @@ export async function registerRoutes(
     }
   });
 
+  // ---------------------------------------------------------------------------
+  // KQL Self-Correction Agent (Phase 2 — MAGIC framework)
+  // ---------------------------------------------------------------------------
+
+  /**
+   * POST /api/kql/validate
+   * Validates a KQL query against a Log Analytics workspace using the safe
+   * `| take 0 | getschema` pattern — no live data is read.
+   *
+   * Body: { query, workspaceId, accessToken }
+   */
+  app.post("/api/kql/validate", async (req, res) => {
+    try {
+      const { query, workspaceId, accessToken } = kqlValidateSchema.parse(req.body);
+
+      const agent = new KQLJediSentinel({ workspaceId, accessToken });
+      const result = await agent.validateKql(query);
+
+      logger.audit("KQL validate", { workspaceId, status: result.status });
+      res.json(result);
+    } catch (error) {
+      if (error instanceof ZodError) return handleZodError(res, error);
+      logger.error("KQL", "Validation endpoint error", { error });
+      res.status(500).json({ error: "KQL validation failed" });
+    }
+  });
+
+  /**
+   * POST /api/kql/correct
+   * Applies the MAGIC self-correction loop to a failed KQL query.
+   * Deterministic rules run first; if an llmEndpoint is provided, an
+   * LLM-assisted correction pass runs for residual errors.
+   *
+   * Body: { query, errorMessage, workspaceId, accessToken, llmEndpoint?, llmApiKey? }
+   */
+  app.post("/api/kql/correct", async (req, res) => {
+    try {
+      const { query, errorMessage, workspaceId, accessToken, llmEndpoint, llmApiKey } =
+        kqlCorrectSchema.parse(req.body);
+
+      const agent = new KQLJediSentinel({ workspaceId, accessToken });
+
+      // Build optional LLM corrector backed by any OpenAI-compatible endpoint
+      let llmCorrector: ((prompt: string) => Promise<string>) | undefined;
+      if (llmEndpoint) {
+        llmCorrector = async (prompt: string) => {
+          const response = await fetch(llmEndpoint, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              ...(llmApiKey ? { Authorization: `Bearer ${llmApiKey}` } : {}),
+            },
+            body: JSON.stringify({
+              model: "gpt-4o",
+              messages: [{ role: "user", content: prompt }],
+              temperature: 0,
+              max_tokens: 1024,
+            }),
+          });
+          if (!response.ok) {
+            throw new Error(`LLM endpoint returned ${response.status}`);
+          }
+          const data = (await response.json()) as {
+            choices?: Array<{ message?: { content?: string } }>;
+          };
+          return data.choices?.[0]?.message?.content ?? "UNFIXABLE";
+        };
+      }
+
+      const result = await agent.selfCorrect(query, errorMessage, llmCorrector);
+
+      logger.audit("KQL correct", {
+        workspaceId,
+        iterations: result.iterationsUsed,
+        correctionsApplied: result.corrections.length,
+      });
+
+      res.json(result);
+    } catch (error) {
+      if (error instanceof ZodError) return handleZodError(res, error);
+      logger.error("KQL", "Correction endpoint error", { error });
+      res.status(500).json({ error: "KQL self-correction failed" });
+    }
+  });
+
+  /**
+   * POST /api/kql/deploy
+   * Deploys a verified KQL query as a Microsoft Sentinel Scheduled Analytics Rule
+   * via the ARM REST API (version 2023-02-01).
+   *
+   * Body: { query, ruleName, workspaceId, accessToken, subscriptionId,
+   *         resourceGroup, workspaceName, ...ruleOptions }
+   */
+  app.post("/api/kql/deploy", async (req, res) => {
+    try {
+      const {
+        query,
+        ruleName,
+        workspaceId,
+        accessToken,
+        subscriptionId,
+        resourceGroup,
+        workspaceName,
+        displayName,
+        description,
+        severity,
+        queryFrequency,
+        queryPeriod,
+        triggerThreshold,
+      } = kqlDeploySchema.parse(req.body);
+
+      // Validate before deploying
+      const agent = new KQLJediSentinel({
+        workspaceId,
+        accessToken,
+        subscriptionId,
+        resourceGroup,
+        workspaceName,
+      });
+
+      const validation = await agent.validateKql(query);
+      if (validation.status === "invalid") {
+        return res.status(400).json({
+          error: "Query failed pre-deployment validation",
+          details: { code: validation.errorCode, message: validation.errorMessage },
+        });
+      }
+
+      const result = await agent.deployToSentinel(query, ruleName, {
+        displayName,
+        description,
+        severity,
+        queryFrequency,
+        queryPeriod,
+        triggerThreshold,
+      });
+
+      if (result.status === "deployed") {
+        await storage.createActivityLog({
+          entityType: "kql_rule",
+          entityId: result.ruleId,
+          action: "deployed",
+          details: `Sentinel analytics rule "${ruleName}" deployed`,
+        });
+      }
+
+      logger.audit("KQL deploy", { ruleName, status: result.status });
+      res.status(result.status === "deployed" ? 201 : 502).json(result);
+    } catch (error) {
+      if (error instanceof ZodError) return handleZodError(res, error);
+      logger.error("KQL", "Deploy endpoint error", { error });
+      res.status(500).json({ error: "KQL rule deployment failed" });
+    }
+  });
+
   logger.info("ROUTES", "All API routes registered successfully", {
     endpoints: [
       "GET /api/dashboard/metrics",
@@ -437,6 +596,9 @@ export async function registerRoutes(
       "POST /api/vulnerabilities/:id/jira",
       "GET /api/activity",
       "GET/POST /api/jira/config",
+      "POST /api/kql/validate",
+      "POST /api/kql/correct",
+      "POST /api/kql/deploy",
     ]
   });
 
