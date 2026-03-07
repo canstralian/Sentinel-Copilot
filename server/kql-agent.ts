@@ -75,7 +75,7 @@ const DETERMINISTIC_RULES: CorrectionRule[] = [
     fix: (query) => {
       // Insert pipe before bare operators like summarize / where / project / extend
       const fixed = query.replace(
-        /\s+(summarize|where|project|extend|join|order|top|take|distinct|count)\b/gi,
+        /(?<!\|)\s+(summarize|where|project|extend|join|order|top|take|distinct|count)\b/gi,
         " | $1"
       );
       return {
