@@ -270,7 +270,8 @@ async def validate_sentinel_kql(query: str) -> str:
                     f"Columns: {col_list}{suffix}"
                 )
             except (KeyError, IndexError):
-                return "✅ KQL Valid — syntax and schema check passed."
+                # Consider logging the error for debugging purposes
+                return "✅ KQL Valid — syntax and schema check passed, but could not parse column schema."
 
         error = response.json().get("error", {})
         code = error.get("code", response.status_code)
