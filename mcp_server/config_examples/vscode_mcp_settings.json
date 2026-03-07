@@ -1,0 +1,17 @@
+{
+  "_comment": "VS Code MCP extension settings (settings.json). Supports both stdio and SSE transports.",
+  "mcp.servers": {
+    "sentinel-jedi": {
+      "type": "stdio",
+      "command": "python",
+      "args": ["-m", "mcp_server.sentinel_jedi"],
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "SENTINEL_WORKSPACE_ID": "your-log-analytics-workspace-guid",
+        "AZURE_TENANT_ID": "your-tenant-id",
+        "AZURE_CLIENT_ID": "your-service-principal-client-id",
+        "AZURE_CLIENT_SECRET": "your-service-principal-secret"
+      }
+    }
+  }
+}
