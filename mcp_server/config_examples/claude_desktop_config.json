@@ -1,0 +1,16 @@
+{
+  "_comment": "Add this block to your claude_desktop_config.json mcpServers section.",
+  "mcpServers": {
+    "sentinel-jedi": {
+      "command": "python",
+      "args": ["-m", "mcp_server.sentinel_jedi"],
+      "cwd": "/path/to/Sentinel-Copilot",
+      "env": {
+        "SENTINEL_WORKSPACE_ID": "your-log-analytics-workspace-guid",
+        "AZURE_TENANT_ID": "your-tenant-id",
+        "AZURE_CLIENT_ID": "your-service-principal-client-id",
+        "AZURE_CLIENT_SECRET": "your-service-principal-secret"
+      }
+    }
+  }
+}
